@@ -1,0 +1,33 @@
+{
+  "name": "@cloudops/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "prebuild": "npm run build --workspace @cloudops/contracts",
+    "build": "tsc -p tsconfig.json",
+    "predev": "npm run build --workspace @cloudops/contracts",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "pretest": "npm run build --workspace @cloudops/contracts",
+    "test": "vitest run",
+    "pretypecheck": "npm run build --workspace @cloudops/contracts",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "prelint": "npm run build --workspace @cloudops/contracts",
+    "lint": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@cloudops/contracts": "*",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "fastify": "^5.12.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.11"
+  }
+}

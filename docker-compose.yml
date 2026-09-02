@@ -1,0 +1,71 @@
+services:
+  cloudops-runtime:
+    image: cloudops-runtime:local
+    build:
+      context: .
+      dockerfile: docker/runtime.Dockerfile
+      target: runtime
+      args:
+        NODE_VERSION: 24.20.0
+        POWERSHELL_VERSION: 7.6.5
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      ARTIFACT_TTL_SECONDS: ${ARTIFACT_TTL_SECONDS:-300}
+      MAX_CONCURRENT_EXECUTIONS: ${MAX_CONCURRENT_EXECUTIONS:-2}
+      CLOUDOPS_ENGINE_ROOT: /workspace/engine
+    ports:
+      - "127.0.0.1:3000:3000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/v1/health').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    stop_grace_period: 10s
+
+  cloudops-web:
+    image: cloudops-development:local
+    build:
+      context: .
+      dockerfile: docker/runtime.Dockerfile
+      target: development
+      args:
+        NODE_VERSION: 24.20.0
+        POWERSHELL_VERSION: 7.6.5
+    command:
+      - npm
+      - run
+      - dev
+      - --workspace
+      - "@cloudops/web"
+      - --
+      - --host
+      - 0.0.0.0
+    environment:
+      NODE_ENV: development
+      VITE_CLOUDOPS_API_URL: ${VITE_CLOUDOPS_API_URL:-http://localhost:3000}
+    ports:
+      - "127.0.0.1:5173:5173"
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      cloudops-runtime:
+        condition: service_healthy
