@@ -17,9 +17,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@azure/msal-browser": "4.30.0",
+    "@azure/msal-react": "3.0.29",
     "@cloudops/contracts": "*",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

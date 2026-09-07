@@ -9,10 +9,13 @@ export interface ApiConfig {
   readonly bodyLimitBytes: number;
   readonly artifactTtlMs: number;
   readonly maxConcurrentExecutions: number;
+  readonly oboTimeoutMs: number;
   readonly maxArtifactBytes: number;
   readonly powershellExecutable: string;
   readonly powershellHealthCacheMs: number;
   readonly engineRoot?: string;
+  readonly entraApiClientId: string;
+  readonly entraApiClientSecret: string;
 }
 
 function parseInteger(
@@ -108,6 +111,14 @@ export function loadConfig(
       1,
       100,
     ),
+    oboTimeoutMs:
+      parseInteger(
+        environment.OBO_TIMEOUT_SECONDS,
+        15,
+        "OBO_TIMEOUT_SECONDS",
+        1,
+        120,
+      ) * 1_000,
     maxArtifactBytes: parseInteger(
       environment.MAX_ARTIFACT_BYTES,
       25 * MEBIBYTE,
@@ -124,6 +135,9 @@ export function loadConfig(
       1,
       3_600,
     ) * 1_000,
+    entraApiClientId: environment.CLOUDOPS_ENTRA_API_CLIENT_ID?.trim() || "",
+    entraApiClientSecret:
+      environment.CLOUDOPS_ENTRA_API_CLIENT_SECRET?.trim() || "",
     ...(environment.CLOUDOPS_ENGINE_ROOT?.trim()
       ? { engineRoot: environment.CLOUDOPS_ENGINE_ROOT.trim() }
       : {}),

@@ -21,6 +21,11 @@ export const RUNTIME_ERROR_CODES = [
   "ARTIFACT_TOO_LARGE",
   "INVALID_ARTIFACT",
   "INVALID_EXECUTION_CONTEXT",
+  "GRAPH_CONSENT_REQUIRED",
+  "GRAPH_INSUFFICIENT_PRIVILEGES",
+  "GRAPH_AUTHENTICATION_FAILED",
+  "GRAPH_THROTTLED",
+  "GRAPH_UNAVAILABLE",
 ] as const;
 
 export type RuntimeErrorCode = (typeof RUNTIME_ERROR_CODES)[number];
@@ -39,8 +44,17 @@ export class PowerShellRuntimeError extends Error {
   }
 }
 
-export interface RuntimeExecutionContext extends AssessmentExecutionRequest {
+export interface RuntimeGraphAuthContext {
+  readonly provider: "microsoft-graph";
+  readonly tenantId: string;
+  readonly accessToken: string;
+}
+
+export interface RuntimeExecutionContext {
   readonly executionId: string;
+  readonly assessmentId: AssessmentExecutionRequest["assessmentId"];
+  readonly options: AssessmentExecutionRequest["options"];
+  readonly auth?: RuntimeGraphAuthContext;
 }
 
 export interface RuntimeExecutionInput {
@@ -53,7 +67,7 @@ export interface RuntimeExecutionInput {
 
 export interface RuntimeExecutionResult {
   readonly artifact: Buffer;
-  readonly summary?: Record<string, unknown>;
+  readonly publicMetrics?: import("@cloudops/contracts").PublicMetrics;
   readonly exitCode: number;
 }
 
@@ -135,6 +149,14 @@ function hasZipLocalFileHeader(buffer: Buffer): boolean {
   );
 }
 
+function assessmentFailureCode(
+  code: import("@cloudops/contracts").AssessmentFailureCode,
+): RuntimeErrorCode {
+  return code === "ASSESSMENT_FAILED"
+    ? "ASSESSMENT_EXECUTION_FAILED"
+    : code;
+}
+
 export class PowerShellRuntime implements AssessmentRuntime {
   readonly #executable: string;
   readonly #maxArtifactBytes: number;
@@ -159,55 +181,89 @@ export class PowerShellRuntime implements AssessmentRuntime {
     this.#environment = childEnvironment(options.environment ?? process.env);
   }
 
-  public async execute(
+  public execute(
     input: RuntimeExecutionInput,
   ): Promise<RuntimeExecutionResult> {
-    let serializedContext: string;
+    let contextBuffer: Buffer;
     try {
-      serializedContext = JSON.stringify(input.context);
+      // JavaScript strings cannot be wiped. Keep the serialized token-bearing
+      // value in the narrowest possible scope, then retain only a wipeable
+      // Buffer for the asynchronous stdin write.
+      const serializedContext = JSON.stringify(input.context);
+      contextBuffer = Buffer.from(serializedContext, "utf8");
     } catch {
-      throw new PowerShellRuntimeError("INVALID_EXECUTION_CONTEXT");
+      return Promise.reject(
+        new PowerShellRuntimeError("INVALID_EXECUTION_CONTEXT"),
+      );
     }
 
     if (
-      serializedContext === undefined ||
-      Buffer.byteLength(serializedContext, "utf8") > this.#maxContextBytes
+      contextBuffer.length === 0 ||
+      contextBuffer.length > this.#maxContextBytes
     ) {
-      throw new PowerShellRuntimeError("INVALID_EXECUTION_CONTEXT");
+      contextBuffer.fill(0);
+      return Promise.reject(
+        new PowerShellRuntimeError("INVALID_EXECUTION_CONTEXT"),
+      );
     }
 
     if (input.signal.aborted) {
-      throw new PowerShellRuntimeError("ASSESSMENT_CANCELLED");
+      contextBuffer.fill(0);
+      return Promise.reject(new PowerShellRuntimeError("ASSESSMENT_CANCELLED"));
     }
 
-    return await new Promise<RuntimeExecutionResult>((resolve, reject) => {
+    const { assessment, signal, onStarted, onProgress } = input;
+    return this.#executeSerializedContext(
+      assessment,
+      signal,
+      onStarted,
+      onProgress,
+      contextBuffer,
+    );
+  }
+
+  #executeSerializedContext(
+    assessment: RegisteredAssessment,
+    signal: AbortSignal,
+    onStarted: () => void,
+    onProgress: (stage: string, progress: number) => void,
+    contextBuffer: Buffer,
+  ): Promise<RuntimeExecutionResult> {
+    return new Promise<RuntimeExecutionResult>((resolve, reject) => {
       const stdoutChunks: Buffer[] = [];
       const stderrDecoder = new StringDecoder("utf8");
       let stdoutBytes = 0;
       let stderrBuffer = "";
-      let summary: Record<string, unknown> | undefined;
+      let publicMetrics: import("@cloudops/contracts").PublicMetrics | undefined;
       let fatalError: PowerShellRuntimeError | undefined;
       let spawned = false;
       let settled = false;
 
-      const child = this.#spawnProcess(
-        this.#executable,
-        [
-          "-NoLogo",
-          "-NoProfile",
-          "-NonInteractive",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          input.assessment.scriptPath,
-        ],
-        {
-          shell: false,
-          windowsHide: true,
-          stdio: "pipe",
-          env: this.#environment,
-        },
-      );
+      let child: ChildProcessWithoutNullStreams;
+      try {
+        child = this.#spawnProcess(
+          this.#executable,
+          [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            assessment.scriptPath,
+          ],
+          {
+            shell: false,
+            windowsHide: true,
+            stdio: "pipe",
+            env: this.#environment,
+          },
+        );
+      } catch {
+        contextBuffer.fill(0);
+        reject(new PowerShellRuntimeError("POWERSHELL_UNAVAILABLE"));
+        return;
+      }
 
       const terminate = (): void => {
         if (child.exitCode === null && child.signalCode === null) {
@@ -220,6 +276,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
       };
 
       const fail = (error: PowerShellRuntimeError): void => {
+        contextBuffer.fill(0);
         if (!fatalError) {
           fatalError = error;
           terminate();
@@ -252,13 +309,17 @@ export class PowerShellRuntime implements AssessmentRuntime {
 
         try {
           if (parsed.data.type === "progress") {
-            input.onProgress(parsed.data.stage, parsed.data.progress);
-          } else if (parsed.data.type === "summary") {
-            summary = parsed.data.summary;
+            onProgress(parsed.data.stage, parsed.data.progress);
+          } else if (parsed.data.type === "publicMetrics") {
+            publicMetrics = parsed.data.publicMetrics;
           } else {
             // Assessment-authored details are deliberately discarded. Only the
             // fixed, public runtime failure code crosses this trust boundary.
-            fail(new PowerShellRuntimeError("ASSESSMENT_EXECUTION_FAILED"));
+            fail(
+              new PowerShellRuntimeError(
+                assessmentFailureCode(parsed.data.code),
+              ),
+            );
           }
         } catch {
           fail(new PowerShellRuntimeError("ASSESSMENT_EXECUTION_FAILED"));
@@ -285,11 +346,11 @@ export class PowerShellRuntime implements AssessmentRuntime {
       const abort = (): void => {
         fail(new PowerShellRuntimeError("ASSESSMENT_CANCELLED"));
       };
-      input.signal.addEventListener("abort", abort, { once: true });
+      signal.addEventListener("abort", abort, { once: true });
 
       const timeout = setTimeout(() => {
         fail(new PowerShellRuntimeError("ASSESSMENT_TIMEOUT"));
-      }, input.assessment.timeoutMs);
+      }, assessment.timeoutMs);
       timeout.unref();
 
       const finish = (exitCode: number | null): void => {
@@ -298,7 +359,8 @@ export class PowerShellRuntime implements AssessmentRuntime {
         }
         settled = true;
         clearTimeout(timeout);
-        input.signal.removeEventListener("abort", abort);
+        signal.removeEventListener("abort", abort);
+        contextBuffer.fill(0);
 
         if (!fatalError) {
           stderrBuffer += stderrDecoder.end();
@@ -351,7 +413,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
 
         resolve({
           artifact,
-          ...(summary ? { summary } : {}),
+          ...(publicMetrics ? { publicMetrics } : {}),
           exitCode: 0,
         });
       };
@@ -395,8 +457,8 @@ export class PowerShellRuntime implements AssessmentRuntime {
       child.once("spawn", () => {
         spawned = true;
         try {
-          input.onStarted();
-          child.stdin.end(serializedContext, "utf8");
+          onStarted();
+          child.stdin.end(contextBuffer, () => contextBuffer.fill(0));
         } catch {
           fail(new PowerShellRuntimeError("ASSESSMENT_EXECUTION_FAILED"));
         }
@@ -444,22 +506,28 @@ export class PowerShellRuntime implements AssessmentRuntime {
   async #checkAvailability(): Promise<boolean> {
     return await new Promise<boolean>((resolve) => {
       let settled = false;
-      const child = this.#spawnProcess(
-        this.#executable,
-        [
-          "-NoLogo",
-          "-NoProfile",
-          "-NonInteractive",
-          "-Command",
-          "$null = $PSVersionTable.PSVersion; exit 0",
-        ],
-        {
-          shell: false,
-          windowsHide: true,
-          stdio: "pipe",
-          env: this.#environment,
-        },
-      );
+      let child: ChildProcessWithoutNullStreams;
+      try {
+        child = this.#spawnProcess(
+          this.#executable,
+          [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "$null = $PSVersionTable.PSVersion; exit 0",
+          ],
+          {
+            shell: false,
+            windowsHide: true,
+            stdio: "pipe",
+            env: this.#environment,
+          },
+        );
+      } catch {
+        resolve(false);
+        return;
+      }
 
       child.stdout.resume();
       child.stderr.resume();

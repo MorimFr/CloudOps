@@ -31,7 +31,46 @@ function ConvertTo-CloudOpsHtmlText {
     return [System.Net.WebUtility]::HtmlEncode($Value)
 }
 
+function Assert-CloudOpsTenantId {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Value
+    )
+
+    $tenantId = [guid]::Empty
+    if (-not [guid]::TryParseExact($Value, 'D', [ref] $tenantId)) {
+        throw [System.ArgumentException]::new('tenantId has an invalid format.')
+    }
+
+    return $tenantId.ToString('D')
+}
+
+function Assert-CloudOpsTransientAccessToken {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Value
+    )
+
+    if (
+        [string]::IsNullOrWhiteSpace($Value) -or
+        $Value.Length -gt 65536 -or
+        $Value -match '[\x00-\x20\x7f]'
+    ) {
+        throw [System.ArgumentException]::new('Transient access token is invalid.')
+    }
+
+    return $Value
+}
+
 Export-ModuleMember -Function @(
     'Assert-CloudOpsIdentifier',
+    'Assert-CloudOpsTenantId',
+    'Assert-CloudOpsTransientAccessToken',
     'ConvertTo-CloudOpsHtmlText'
 )

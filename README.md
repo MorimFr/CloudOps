@@ -1,117 +1,139 @@
 # CloudOps v2
 
-CloudOps é a fundação de uma plataforma web para security assessments. Este repositório prova um pipeline real e containerizado entre React, Fastify e PowerShell 7, com artefatos mantidos somente em memória.
+CloudOps é uma fundação multicloud para security assessments com processamento efêmero. A aplicação combina React, Fastify, Microsoft Entra multitenant e PowerShell 7 sem banco, storage, Redis, fila persistente ou arquivos temporários de assessment.
 
-Nesta etapa, o único assessment é o `hello-world`: ele não acessa Microsoft Graph e gera um ZIP em memória contendo `report.html` e `summary.json`.
+Esta etapa entrega:
 
-## Arquitetura local
+- Cloud Selector para Microsoft Azure, AWS e GCP;
+- shell com Dashboard, GovOps, SecOps, FinOps e DevOps em todas as clouds;
+- autenticação Microsoft Entra para contas de qualquer diretório organizacional;
+- validação criptográfica do access token da CloudOps API;
+- On-Behalf-Of (OBO) para Microsoft Graph;
+- assessment real `microsoft-graph-connectivity`, com delegated `User.Read`;
+- `hello-world` preservado como assessment de desenvolvimento e regressão;
+- ZIP em RAM, download único, TTL e limpeza best-effort de buffers.
+
+## Fluxo
 
 ```text
 Browser
-   -> CloudOps Web (React + Vite, :5173)
-   -> CloudOps API (Fastify, :3000)
-   -> Assessment Registry
-   -> Execution Manager (RAM)
-   -> pwsh 7 real
-   -> ZIP Buffer (RAM)
-   -> download único no Browser
+  -> MSAL (CloudOps API token, memoryStorage)
+  -> CloudOps API (Bearer validation + execution ownership)
+  -> Entra OBO (tenant validado + scopes do registry)
+  -> Microsoft Graph token
+  -> pwsh via stdin
+  -> Microsoft Graph REST /v1.0
+  -> ZIP em RAM
+  -> browser
+  -> download único
 ```
 
-Node envia contexto JSON por `stdin`, lê eventos NDJSON de `stderr` e recebe somente bytes do ZIP por `stdout`. O processo é iniciado a partir de um registry interno, sem shell e sem aceitar caminho do cliente.
+O navegador nunca recebe um token do Microsoft Graph. O processo PowerShell nunca faz login interativo. O token Graph segue somente pelo `stdin` do processo filho e perde suas referências ativas assim que possível.
 
 ## Início rápido
 
-Requisito: Docker com Compose v2.
+Requisitos:
+
+- Docker com Compose v2;
+- dois App Registrations Microsoft Entra configurados conforme [docs/entra-setup.md](docs/entra-setup.md).
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Preencha no `.env` os IDs dos apps, o scope da API e o client secret local. Depois:
 
 ```powershell
 docker compose up --build
 ```
 
-Abra `http://localhost:5173`, execute **Hello World Assessment**, acompanhe o progresso e baixe o relatório.
+Abra `http://localhost:5173`, escolha **Microsoft Azure**, faça login e navegue até **SecOps → Microsoft Graph Connectivity**.
 
-Portas:
+Endpoints locais:
 
 - Web: `http://localhost:5173`
 - API: `http://localhost:3000`
-- Health: `http://localhost:3000/api/v1/health`
+- Health público: `http://localhost:3000/api/v1/health`
 
-## Como validar
+Todas as rotas de catálogo e execução exigem um token destinado à CloudOps API.
 
-1. Execute `docker compose up --build`.
-2. Abra `http://localhost:5173`.
-3. Execute o card **Hello World Assessment**.
-4. Acompanhe `STARTING -> RUNNING -> COMPLETED` e a barra de progresso.
-5. Baixe o ZIP.
-6. Confirme que ele contém `report.html` e `summary.json`.
-7. Confirme que o artefato não está mais disponível na API depois do download.
+## Configuração
 
-## Testes
+```dotenv
+VITE_ENTRA_WEB_CLIENT_ID=<CloudOps Web Dev client ID>
+VITE_ENTRA_API_SCOPE=api://<CloudOps API Dev client ID>/Assessment.Run
+CLOUDOPS_ENTRA_API_CLIENT_ID=<CloudOps API Dev client ID>
+CLOUDOPS_ENTRA_API_CLIENT_SECRET=<secret apenas para desenvolvimento local>
+```
+
+Não use um tenant ID fixo. A authority do browser é `organizations`; a API deriva e valida o tenant a partir do token assinado. Toda variável `VITE_*` é pública e jamais deve conter secret.
+
+O `CLOUDOPS_ENTRA_API_CLIENT_SECRET` é aceitável somente no desenvolvimento local. Produção deve usar certificado ou outra credencial de confidential client mais forte.
+
+## Validação
 
 ```powershell
-npm install
+npm ci
 npm run typecheck
 npm run lint
 npm run test
 npm run build
 ```
 
-Com os containers em execução, valide o pipeline real sem gravar o ZIP em disco:
+Testes do engine no PowerShell 7:
 
 ```powershell
-npm run test:e2e
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-GraphModule.ps1
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-HelloWorld.ps1
 ```
 
-Validação direta do engine, sem dependência de Pester:
+O E2E HTTP do Hello World agora também é autenticado. Com os containers ativos, forneça um token válido da CloudOps API usando o prompt protegido descrito em [Desenvolvimento local — Hello World](docs/local-development.md#hello-world). Não cole o token em um comando literal que possa entrar no histórico do shell.
 
-```powershell
-pwsh -NoLogo -NoProfile -File ./engine/tests/Validate-HelloWorld.ps1
-```
-
-Se `pwsh` não estiver instalado no host:
-
-```powershell
-docker compose run --rm --no-deps cloudops-runtime pwsh -NoLogo -NoProfile -File ./engine/tests/Validate-HelloWorld.ps1
-```
+O CI não recebe credenciais: executa testes criptográficos locais de auth/OBO, build da imagem e os testes PowerShell sem rede. O Graph E2E real é deliberadamente manual.
 
 ## Zero Retention
 
-Execution state e ZIP vivem somente na RAM da API. O artefato é consumido no primeiro download ou eliminado após o TTL de 5 minutos; buffers controlados pela aplicação são zerados em best-effort. O frontend guarda estado somente na memória React e revoga a `Blob URL` após o download.
+- tokens MSAL, token da API, token OBO/Graph e dados Graph permanecem somente em RAM;
+- MSAL Browser LTS usa `memoryStorage` para tokens e cache temporário OAuth, sem cookies ou migração de cache;
+- cada troca OBO cria um confidential client efêmero, usa `skipCache`, limpa seu cache e não mantém Graph token entre requests;
+- a aquisição OBO tem deadline configurável e libera a capacidade reservada em timeout;
+- estado e ownership de executions vivem em um `Map`;
+- Graph responses são processadas em memória e não entram em `publicMetrics`;
+- o ZIP é consumido no primeiro download ou eliminado pelo TTL;
+- buffers controlados são sobrescritos em best-effort;
+- o Compose não possui volume de dados e o runtime usa filesystem read-only.
 
-Não existem banco, Redis, storage, fila persistente ou volumes Docker. O PowerShell usa `MemoryStream`/`ZipArchive` e não cria relatório temporário. O arquivo que o usuário escolhe baixar é a única persistência intencional.
+O arquivo que o usuário escolhe baixar é a única persistência intencional.
 
-Consulte [Zero Retention](docs/zero-retention.md) para controles e limitações honestas.
-
-## Estrutura principal
+## Estrutura
 
 ```text
 apps/
-|-- api/                 # Fastify, registry e execution manager em RAM
-`-- web/                 # React/Vite e estado efêmero
-packages/
-`-- contracts/           # tipos e schemas compartilhados
+|-- api/                         # Fastify, Entra, OBO e executions em RAM
+`-- web/                         # React, Router, MSAL e shell multicloud
+packages/contracts/              # schemas HTTP e protocolo interno
 engine/
-|-- shared/              # protocolo e segurança PowerShell
-|-- hello-world/         # assessment fictício real
-`-- tests/               # validação do engine/ZIP em memória
-docker/
-`-- runtime.Dockerfile   # Node 24.20.0 + PowerShell 7.6.5
+|-- shared/CloudOps.Graph.psm1   # Graph REST, retry, paginação e host pinning
+|-- microsoft-graph-connectivity/
+|-- hello-world/
+`-- tests/
+docker/runtime.Dockerfile        # Node 24.20.0 + PowerShell 7.6.5
 docs/
-|-- architecture.md
-|-- zero-retention.md
-|-- assessment-contract.md
-|-- assessment-development.md
-`-- local-development.md
-docker-compose.yml
 ```
 
 ## Documentação
 
 - [Arquitetura](docs/architecture.md)
-- [Política de Zero Retention](docs/zero-retention.md)
+- [Arquitetura multicloud](docs/multicloud-architecture.md)
+- [Microsoft Entra — configuração exata](docs/entra-setup.md)
+- [Autenticação e OBO](docs/authentication.md)
+- [Microsoft Graph](docs/microsoft-graph.md)
+- [Zero Retention](docs/zero-retention.md)
 - [Contrato de assessments](docs/assessment-contract.md)
 - [Desenvolvimento de assessments](docs/assessment-development.md)
 - [Desenvolvimento local](docs/local-development.md)
+- [Resultados da validação local](docs/validation-report.md)
 
 ## Limitações atuais
 
-Ainda não foram implementados Microsoft Entra, autenticação da API, On-Behalf-Of, Microsoft Graph, assessments reais ou Azure. A próxima camada arquitetural sugerida é Microsoft Entra authentication + CloudOps API authentication + On-Behalf-Of para Graph; ela não faz parte desta entrega.
+AWS e GCP possuem shell/navegação, sem autenticação ou APIs. Não estão implementados Inactive Users, Privileged Role Auditor, Secure Score, Conditional Access Assessment, deployment Azure, Bicep, Key Vault, database, storage ou n8n. O único acesso Graph atual é delegated `User.Read`, usado para validar `/me`.

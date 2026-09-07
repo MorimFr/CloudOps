@@ -18,10 +18,12 @@
     "lint": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@azure/msal-node": "^6.0.0",
     "@cloudops/contracts": "*",
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.2",
     "fastify": "^5.12.1",
+    "jose": "^6.2.10",
     "zod": "^4.5.4"
   },
   "devDependencies": {

@@ -1,55 +1,102 @@
 # Desenvolvimento de assessments
 
-## Estrutura mínima
+## Estrutura
 
 ```text
 engine/<assessment-id>/
 |-- Invoke-Assessment.ps1
 |-- README.md
-|-- knowledge/          # conteúdo estático e não sensível, quando necessário
+|-- knowledge/
 `-- tests/
 ```
 
-O diretório só se torna executável depois de uma entrada explícita no Assessment Registry. Nunca derive caminho a partir do input do cliente.
+Um diretório só pode ser executado após entrada explícita no Assessment Registry. Nunca derive path ou comando do cliente.
+
+## Metadata obrigatória
+
+Registre:
+
+```text
+id
+name
+description
+scriptPath interno
+enabled
+timeoutMs
+provider
+domain
+visibility
+requiredAuthProvider
+requiredPermissions
+adminConsentRequired
+```
+
+Novos providers/domínios/permissões exigem expansão revisada dos schemas compartilhados. O frontend gera cards a partir desses metadados.
+
+Hello World deve permanecer `azure/devops`, `development`, auth `none`. Microsoft Graph Connectivity é `azure/secops`, `public`, auth `microsoft-graph`, permission `User.Read`.
 
 ## Regras obrigatórias
 
-1. Usar PowerShell 7 cross-platform; não depender de Windows PowerShell 5.1, COM, Registry, Office ou APIs exclusivas do Windows.
-2. Ler exatamente um contexto JSON de `stdin` com `Read-CloudOpsExecutionContext`.
-3. Emitir progresso/resumo sanitizado em NDJSON por `stderr` com os helpers compartilhados.
-4. Reservar `stdout` exclusivamente para um único artefato binário.
-5. Construir ZIP e seus membros inteiramente em memória.
-6. Não escrever assessment data em filesystem, cache, histórico, transcript, log ou telemetria.
-7. Não imprimir token, opções, resposta Graph, PII ou findings no canal de controle.
-8. Validar identificadores e codificar qualquer texto dinâmico inserido em HTML.
-9. Propagar falha por evento sanitizado e exit code não zero, sem stack/contexto.
-10. Manter a lógica específica dentro do engine, não no backend genérico.
+1. Use PowerShell 7 cross-platform.
+2. Leia um único contexto com `Read-CloudOpsExecutionContext`.
+3. Valide `assessmentId` e somente leia `auth` quando o registry exigir Graph.
+4. Emita progresso e métricas públicas por NDJSON em `stderr`.
+5. Reserve `stdout` exclusivamente ao ZIP.
+6. Construa ZIP/entries em `MemoryStream`/`ZipArchive`; nunca use filesystem, inclusive `/tmp`.
+7. Não escreva log, transcript, cache, history, checkpoint ou telemetria de assessment.
+8. Não exponha token, tenant, Graph response, PII ou finding detalhado em evento público.
+9. Faça HTML encoding de dados dinâmicos.
+10. Em falha, use somente códigos/mensagens sanitizados e exit code não zero.
+11. Limpe byte arrays/buffers controlados em `finally` e libere referências a tokens cedo.
 
-Evite `Write-Host`, `Write-Output`, saída implícita de expressões, `Write-Warning` e `Write-Verbose`. Mesmo uma única linha textual corrompe o ZIP de `stdout`. Use `[void]` ao chamar APIs .NET que possam retornar valores.
+Evite `Write-Host`, `Write-Output`, `Write-Warning`, `Write-Verbose` e saída implícita. Mesmo um texto em `stdout` corrompe o ZIP.
 
-## Registro
+## Graph
 
-Uma entrada deve declarar ID, nome público, script fixo, habilitação e timeout. A API publica somente ID, nome, descrição/estado habilitado; o caminho permanece interno. IDs seguem `^[A-Za-z0-9][A-Za-z0-9-]{0,127}$`.
+Use `engine/shared/CloudOps.Graph.psm1`, nunca instale Microsoft.Graph PowerShell SDK. Não aceite host, access token, tenant ou scopes de options.
 
-## Testes esperados
+Prefira:
 
-- contexto ausente, JSON inválido e assessment ID incompatível falham sem expor input;
-- cada linha de `stderr` é NDJSON válido e obedece ao schema;
-- os estágios e progressos são monotônicos;
-- `stdout` é um ZIP válido com entradas esperadas;
-- JSON/HTML internos são válidos e seguros;
-- o processo não cria ou altera arquivos de assessment;
-- buffers são descartados em sucesso, falha e timeout;
-- nenhuma opção recebida altera script ou argumentos do processo.
-
-O teste independente do Hello World pode ser executado sem Pester:
-
-```powershell
-pwsh -NoLogo -NoProfile -File ./engine/tests/Validate-HelloWorld.ps1
+```text
+Graph page
+  -> agregação/stream de report
+  -> descarte da página
 ```
 
-Ele captura os três streams com `System.Diagnostics.Process`, abre o ZIP diretamente de um `MemoryStream` e compara hashes do projeto e, em Linux, de `/tmp`, antes/depois. Dependências estáticas, IPCs e o cache de timing que o próprio `pwsh` atualiza em cada startup são excluídos explicitamente.
+`Get-CloudOpsGraphCollection` valida `@odata.nextLink`; `Invoke-CloudOpsGraphRequest` já aplica host fixo, response limit, retry e erros seguros. Não registre request/response.
 
-## Preparação para Microsoft Graph
+Permissões vêm do registry e devem seguir least privilege. Não adicione permissões futuras ao App Registration antes do assessment correspondente.
 
-Assessments futuros receberão credencial transitória pelo contexto e chamarão Graph REST por um módulo controlado. Isso não autoriza gravar token/resposta, instalar o Microsoft.Graph PowerShell SDK ou adicionar logging de payload. Autenticação e OBO ainda não fazem parte desta etapa.
+## publicMetrics
+
+Use apenas:
+
+```text
+findings
+objectsAnalyzed
+requestsCompleted
+graphReachable
+```
+
+Os contadores são inteiros agregados. Tudo que identifica conta, objeto, tenant, grupo, aplicação, política ou evidência pertence exclusivamente ao ZIP.
+
+## Testes
+
+Obrigatório cobrir, conforme aplicável:
+
+- contexto ausente/inválido e auth incompatível;
+- NDJSON/schema/progresso;
+- ZIP e entries esperadas em memória;
+- HTML/JSON seguros;
+- nenhum arquivo alterado;
+- sucesso, timeout, abort e buffer cleanup;
+- Graph 200, 401, 403, 429/Retry-After, 5xx/retry e limites;
+- paginação, ciclo e nextLink host inválido;
+- ausência de dado detalhado em publicMetrics.
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-GraphModule.ps1
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-HelloWorld.ps1
+```
+
+Unit tests não chamam Graph real. O E2E Graph real é manual e exige conta/consentimento válidos.

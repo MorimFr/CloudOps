@@ -2,67 +2,114 @@
 
 ## Requisitos
 
-- Docker Desktop ou Docker Engine com Compose v2;
-- opcionalmente Node.js 24 e npm para execução fora de containers;
-- opcionalmente PowerShell 7.2+ para o teste direto do engine.
+- Docker Desktop/Engine com Compose v2;
+- dois App Registrations conforme [entra-setup.md](entra-setup.md);
+- opcionalmente Node.js 24 e npm;
+- opcionalmente PowerShell 7.2+.
 
-O Dockerfile desta etapa valida downloads oficiais de PowerShell para arquiteturas `amd64` e `arm64`; outras arquiteturas falham explicitamente durante o build.
+Não é necessário banco, Redis, storage ou emulador Azure.
 
-Nenhum banco, Redis, storage ou emulador Azure é necessário.
-
-## Iniciar com Docker
-
-Na raiz do repositório:
+## Configurar
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up --build
 ```
 
-Copiar o `.env` é opcional porque o Compose já possui defaults seguros. A aplicação fica disponível em:
+Preencha:
+
+```dotenv
+NODE_ENV=development
+PORT=3000
+WEB_ORIGIN=http://localhost:5173
+VITE_CLOUDOPS_API_URL=http://localhost:3000
+
+VITE_ENTRA_WEB_CLIENT_ID=<WEB_CLIENT_ID>
+VITE_ENTRA_API_SCOPE=api://<API_CLIENT_ID>/Assessment.Run
+CLOUDOPS_ENTRA_API_CLIENT_ID=<API_CLIENT_ID>
+CLOUDOPS_ENTRA_API_CLIENT_SECRET=<API_CLIENT_SECRET_VALUE>
+
+ARTIFACT_TTL_SECONDS=300
+MAX_CONCURRENT_EXECUTIONS=2
+OBO_TIMEOUT_SECONDS=15
+MAX_ARTIFACT_BYTES=26214400
+VITE_SHOW_DEV_ASSESSMENTS=false
+```
+
+Não use tenant ID fixo. O client secret é somente local e nunca deve usar prefixo `VITE_`.
+
+## Executar
+
+```powershell
+docker compose up --build
+```
 
 - Web: `http://localhost:5173`
 - API: `http://localhost:3000`
 - Health: `http://localhost:3000/api/v1/health`
 
-O Compose não usa volumes. Alterações de código exigem novo build (`docker compose up --build`). Isso evita que o runtime tenha acesso gravável ao workspace do host.
+O Compose passa o secret apenas ao runtime/API. A API usa filesystem read-only, tmpfs pequeno, capabilities removidas e nenhum volume de dados.
 
-A API usa o build compilado da imagem de runtime, mas o Compose define `NODE_ENV=development` para habilitar CORS exclusivamente para `http://localhost:5173`. A imagem mantém `NODE_ENV=production` como default para um futuro deployment, no qual Web e API deverão ter origem explicitamente configurada.
+## Validar a UI e Graph real
 
-## Validar o fluxo
+1. Abra o Web e confirme o Cloud Selector.
+2. Entre em Azure; confirme as cinco áreas na sidebar.
+3. Selecione **Entrar com Microsoft** e uma conta organizacional.
+4. No Dashboard, confirme `Authenticated`, Account e Tenant.
+5. Navegue para **SecOps**.
+6. Execute **Microsoft Graph Connectivity**.
+7. Aguarde `COMPLETED` e baixe o ZIP uma vez.
+8. Confirme `report.html` e `summary.json`.
+9. Confirme que novo download não está disponível.
+10. Em DevTools, inspecione Local Storage, Session Storage e IndexedDB durante e após o login: nenhum token, metadado OAuth, dado Graph, resultado de execution ou artifact deve ser gravado pelo CloudOps.
+11. Inspecione o filesystem do container: não deve existir Graph response, token cache, report, JSON ou ZIP temporário.
+12. Selecione AWS e GCP e confirme as cinco áreas e seus estados indisponíveis, sem conteúdo Azure residual.
 
-1. Abra `http://localhost:5173`.
-2. No card **Hello World Assessment**, selecione **Executar**.
-3. Observe `STARTING`, os estágios em execução e `COMPLETED`.
-4. Selecione **Baixar relatório**.
-5. Abra o ZIP escolhido pelo navegador e confirme `report.html` e `summary.json`.
-6. Consulte novamente o status: `artifactAvailable` deve ser `false` após o download.
+Se houver duas contas de tenants diferentes, repita após **Sair/Trocar conta**. Isso só funciona onde o app é permitido, as delegated permissions estão consentidas e o usuário é autorizado.
 
-O arquivo baixado é a única persistência intencional e passa a ser responsabilidade do usuário.
+## Hello World
 
-## Testes e build locais
+Para exibir o card de regressão durante desenvolvimento:
+
+```dotenv
+VITE_SHOW_DEV_ASSESSMENTS=true
+```
+
+Ele aparece em **Azure → DevOps** apenas no modo development.
+
+O E2E HTTP requer um access token válido para a CloudOps API:
 
 ```powershell
-npm install
+$e2eToken = Read-Host 'CloudOps API access token (Assessment.Run)' -AsSecureString
+try {
+    $env:CLOUDOPS_E2E_API_TOKEN = [System.Net.NetworkCredential]::new('', $e2eToken).Password
+    npm run test:e2e
+} finally {
+    Remove-Item Env:CLOUDOPS_E2E_API_TOKEN -ErrorAction SilentlyContinue
+    $e2eToken.Dispose()
+}
+```
+
+O prompt evita colocar o token no histórico de comandos. Não cole tokens em comandos literais, `.env`, arquivos ou sessões com transcrição/diagnóstico de payload. Esse token é da CloudOps API, nunca do Graph; a variável de ambiente temporária existe somente para o cliente de teste e não é repassada ao engine. O script remove sua cópia da variável ao iniciar e não imprime nem grava o token ou o ZIP.
+
+## Testes locais
+
+```powershell
+npm ci
 npm run typecheck
 npm run lint
 npm run test
 npm run build
 ```
 
-Sem PowerShell instalado no host, rode a validação do engine na imagem de desenvolvimento:
+Sem `pwsh` no host:
 
 ```powershell
-docker compose run --rm --no-deps cloudops-runtime pwsh -NoLogo -NoProfile -File ./engine/tests/Validate-HelloWorld.ps1
+docker build --file docker/runtime.Dockerfile --target development --tag cloudops-development:local .
+docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env HOME=/tmp/cloudops-home cloudops-development:local pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-GraphModule.ps1
+docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env HOME=/tmp/cloudops-home cloudops-development:local pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-HelloWorld.ps1
 ```
 
-Com os serviços ativos, o E2E HTTP mantém o ZIP somente em memória e valida o download único:
-
-```powershell
-npm run test:e2e
-```
-
-## Inspecionar containers
+## Inspecionar
 
 ```powershell
 docker compose ps
@@ -71,7 +118,7 @@ docker compose exec cloudops-runtime pwsh --version
 docker compose exec cloudops-runtime id -u
 ```
 
-As versões esperadas são Node `v24.20.0` e PowerShell `7.6.5`. O UID deve ser diferente de `0`. O serviço `cloudops-runtime` deve aparecer como `healthy`.
+Esperado: Node `v24.20.0`, PowerShell `7.6.5`, UID diferente de zero e runtime `healthy`.
 
 ## Encerrar
 
@@ -79,16 +126,4 @@ As versões esperadas são Node `v24.20.0` e PowerShell `7.6.5`. O UID deve ser 
 docker compose down
 ```
 
-Como não existem volumes, não há volume de assessment para remover. Restart ou `down` perde toda execução em memória, conforme a política de zero retention.
-
-## Variáveis
-
-| Variável | Default | Uso |
-| --- | ---: | --- |
-| `PORT` | `3000` | Porta da API dentro do container |
-| `WEB_ORIGIN` | `http://localhost:5173` | Única origem CORS local |
-| `VITE_CLOUDOPS_API_URL` | `http://localhost:3000` | URL da API usada pelo navegador |
-| `ARTIFACT_TTL_SECONDS` | `300` | Vida máxima do artefato concluído em RAM |
-| `MAX_CONCURRENT_EXECUTIONS` | `2` | Processos PowerShell simultâneos |
-
-Não coloque secrets no `.env`. A autenticação Microsoft Entra ainda não foi implementada.
+Sem volumes, restart/down perde todas as executions em memória por design.

@@ -1,5 +1,7 @@
 import type { FastifyServerOptions } from "fastify";
 
+import { redactSensitiveData } from "./redaction.js";
+
 const REDACTION_PATHS = [
   "req.headers.authorization",
   "req.headers.cookie",
@@ -8,13 +10,43 @@ const REDACTION_PATHS = [
   "cookie",
   "set-cookie",
   "accessToken",
+  "idToken",
+  "graphToken",
   "refreshToken",
   "clientSecret",
+  "clientAssertion",
+  "oboAssertion",
+  "claimsChallenge",
+  "authenticateHeader",
+  "tenantId",
+  "objectId",
+  "tid",
+  "oid",
+  "claims",
+  "preferred_username",
+  "username",
+  "email",
+  "displayName",
   "*.authorization",
   "*.cookie",
   "*.accessToken",
+  "*.idToken",
+  "*.graphToken",
   "*.refreshToken",
   "*.clientSecret",
+  "*.clientAssertion",
+  "*.oboAssertion",
+  "*.claimsChallenge",
+  "*.authenticateHeader",
+  "*.tenantId",
+  "*.objectId",
+  "*.tid",
+  "*.oid",
+  "*.claims",
+  "*.preferred_username",
+  "*.username",
+  "*.email",
+  "*.displayName",
 ] as const;
 
 export function createSecureLoggerOptions(
@@ -26,6 +58,14 @@ export function createSecureLoggerOptions(
       paths: [...REDACTION_PATHS],
       censor: "[REDACTED]",
       remove: false,
+    },
+    formatters: {
+      log(object) {
+        const redacted = redactSensitiveData(object);
+        return typeof redacted === "object" && redacted !== null && !Array.isArray(redacted)
+          ? redacted as Record<string, unknown>
+          : { value: "[REDACTED]" };
+      },
     },
     serializers: {
       req(request: {

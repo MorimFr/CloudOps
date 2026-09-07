@@ -9,15 +9,19 @@ services:
         NODE_VERSION: 24.20.0
         POWERSHELL_VERSION: 7.6.5
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-development}
       HOST: 0.0.0.0
-      PORT: 3000
+      PORT: ${PORT:-3000}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
       ARTIFACT_TTL_SECONDS: ${ARTIFACT_TTL_SECONDS:-300}
       MAX_CONCURRENT_EXECUTIONS: ${MAX_CONCURRENT_EXECUTIONS:-2}
+      OBO_TIMEOUT_SECONDS: ${OBO_TIMEOUT_SECONDS:-15}
+      MAX_ARTIFACT_BYTES: ${MAX_ARTIFACT_BYTES:-26214400}
       CLOUDOPS_ENGINE_ROOT: /workspace/engine
+      CLOUDOPS_ENTRA_API_CLIENT_ID: ${CLOUDOPS_ENTRA_API_CLIENT_ID:?Set CLOUDOPS_ENTRA_API_CLIENT_ID in .env}
+      CLOUDOPS_ENTRA_API_CLIENT_SECRET: ${CLOUDOPS_ENTRA_API_CLIENT_SECRET:?Set CLOUDOPS_ENTRA_API_CLIENT_SECRET in .env}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${PORT:-3000}:${PORT:-3000}"
     init: true
     read_only: true
     tmpfs:
@@ -31,7 +35,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/api/v1/health').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:' + process.env.PORT + '/api/v1/health').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"
       interval: 5s
       timeout: 3s
       retries: 10
@@ -59,6 +63,9 @@ services:
     environment:
       NODE_ENV: development
       VITE_CLOUDOPS_API_URL: ${VITE_CLOUDOPS_API_URL:-http://localhost:3000}
+      VITE_ENTRA_WEB_CLIENT_ID: ${VITE_ENTRA_WEB_CLIENT_ID:?Set VITE_ENTRA_WEB_CLIENT_ID in .env}
+      VITE_ENTRA_API_SCOPE: ${VITE_ENTRA_API_SCOPE:?Set VITE_ENTRA_API_SCOPE in .env}
+      VITE_SHOW_DEV_ASSESSMENTS: ${VITE_SHOW_DEV_ASSESSMENTS:-false}
     ports:
       - "127.0.0.1:5173:5173"
     init: true

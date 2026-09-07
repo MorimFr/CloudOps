@@ -24,4 +24,17 @@ describe("API configuration", () => {
       loadConfig({ NODE_ENV: "development", WEB_ORIGIN: webOrigin }),
     ).toThrow(/WEB_ORIGIN/);
   });
+
+  it("parses bounded OBO and artifact limits", () => {
+    const config = loadConfig({
+      OBO_TIMEOUT_SECONDS: "7",
+      MAX_ARTIFACT_BYTES: "1048576",
+    });
+
+    expect(config.oboTimeoutMs).toBe(7_000);
+    expect(config.maxArtifactBytes).toBe(1_048_576);
+    expect(() => loadConfig({ OBO_TIMEOUT_SECONDS: "0" })).toThrow(
+      /OBO_TIMEOUT_SECONDS/,
+    );
+  });
 });

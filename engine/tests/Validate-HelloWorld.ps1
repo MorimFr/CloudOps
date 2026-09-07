@@ -130,13 +130,16 @@ try {
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
             ForEach-Object { $_ | ConvertFrom-Json -Depth 16 -ErrorAction Stop }
     )
-    Assert-Condition -Condition ($events.Count -eq 5) -Message 'Expected four progress events and one summary event.'
+    Assert-Condition -Condition ($events.Count -eq 5) -Message 'Expected four progress events and one public metrics event.'
 
     $progressEvents = @($events | Where-Object type -eq 'progress')
     Assert-Condition -Condition ($progressEvents.Count -eq 4) -Message 'Expected four progress events.'
     Assert-Condition -Condition (($progressEvents.stage -join ',') -eq 'INITIALIZING,PROCESSING,GENERATING_REPORT,COMPLETED') -Message 'Progress stages were not emitted in contract order.'
     Assert-Condition -Condition (($progressEvents.progress -join ',') -eq '10,55,85,100') -Message 'Progress values were not emitted in contract order.'
-    Assert-Condition -Condition (@($events | Where-Object type -eq 'summary').Count -eq 1) -Message 'Expected one summary event.'
+    $metricsEvents = @($events | Where-Object type -eq 'publicMetrics')
+    Assert-Condition -Condition ($metricsEvents.Count -eq 1) -Message 'Expected one public metrics event.'
+    Assert-Condition -Condition ($metricsEvents[0].publicMetrics.findings -eq 0) -Message 'Public metrics are invalid.'
+    Assert-Condition -Condition ($null -eq $metricsEvents[0].publicMetrics.PSObject.Properties['message']) -Message 'Public metrics exposed an arbitrary string.'
 
     $artifactStream.Position = 0
     $archive = [System.IO.Compression.ZipArchive]::new(

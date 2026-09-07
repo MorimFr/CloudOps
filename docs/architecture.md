@@ -1,73 +1,115 @@
 # Arquitetura do CloudOps v2
 
-## Objetivo desta fundação
-
-Esta etapa prova o caminho de execução real entre navegador, Node.js e PowerShell 7 sem autenticação Microsoft Entra, Microsoft Graph ou qualquer serviço persistente.
+## Visão geral
 
 ```text
-CloudOps Web (React/Vite)
-          |
-          | HTTP local (HTTPS no deployment), JSON/download binário
-          v
-CloudOps API (Fastify)
-          |
-          v
-Assessment Registry
-          |
-          v
-PowerShell Runtime (processo filho)
-          |
-          v
-Assessment Engine
+CloudOps Web
+  React Router + MSAL Browser
+        |
+        | CloudOps API access token
+        v
+CloudOps API
+  Entra JWT validation + owner isolation
+        |
+        | OBO somente quando o registry exige Graph
+        v
+Microsoft Entra / Microsoft Graph
+        |
+        | Graph token transitório via stdin
+        v
+PowerShell 7 Assessment Engine
+        |
+        | NDJSON em stderr + ZIP binário em stdout
+        v
+Execution Manager (RAM)
+        |
+        | download único
+        v
+Browser
 ```
 
-No ambiente local, Web e API são serviços Docker separados. A API e o engine estão na mesma imagem de runtime Linux, de modo que `pwsh` é executado diretamente, sem shell intermediário e sob o mesmo usuário não privilegiado da API.
+Web e API são serviços separados. A imagem da API inclui Node 24, PowerShell 7 e o engine; `pwsh` é iniciado diretamente, sem shell intermediário, como usuário não privilegiado.
 
-## Componentes
+## Web
 
-### CloudOps Web
+A rota é a fonte de estado do provider e domínio. O Cloud Selector leva aos shells Azure, AWS e GCP, cada um com Dashboard, GovOps, SecOps, FinOps e DevOps.
 
-Lista apenas a visão pública do registry, inicia uma execução por `assessmentId`, consulta o status em intervalos curtos e baixa o artefato quando disponível. Estado de execução e `Blob` existem somente na memória da página. O frontend não conhece caminhos de scripts e não usa `localStorage`, `sessionStorage`, IndexedDB ou Service Worker Cache para dados de assessment.
+Para Azure, MSAL autentica contas work/school pela authority `organizations`. O cache usa somente memória. O frontend solicita o scope da CloudOps API, injeta o Bearer token num cliente central e nunca recebe token Microsoft Graph.
 
-### CloudOps API
+O catálogo é carregado depois da autenticação e filtrado dinamicamente pelos metadados do registry. Estado de sessão, account, tenant, execution e Blob URL fica somente na memória da página.
 
-Valida requisições, aplica CORS e headers de segurança, limita concorrência e mantém estados e artefatos em estruturas em memória. Um restart perde todas as execuções por design. O API nunca interpreta lógica específica de um assessment.
+## API e boundary de autenticação
 
-### Assessment Registry
+Somente `GET /api/v1/health` é público. O hook Entra protege todas as rotas de assessment/execution; handlers também exigem explicitamente a identidade quando usam estado.
 
-É a única fonte de mapeamento entre um `assessmentId` público e um script aprovado. Um cliente nunca envia caminho, comando ou argumentos de processo. Um ID desconhecido é recusado antes de iniciar PowerShell.
+O validator aceita somente access token v2:
 
-### PowerShell Runtime
+- assinado em RS256 por uma chave obtida dos endpoints Microsoft fixos de `organizations`;
+- issuer tenant-specific consistente com o `tid` GUID validado;
+- audience do App Registration CloudOps API;
+- dentro da validade temporal;
+- com delegated scope `Assessment.Run`;
+- com `oid` de usuário.
 
-Inicia `pwsh` com executável e argumentos fixos, `shell: false`, timeout e canais separados. O contexto JSON segue por `stdin`; eventos de controle NDJSON seguem por `stderr`; somente o ZIP binário segue por `stdout`. Saída inválida ou processo malsucedido produz erro público sanitizado e descarte dos buffers.
+Metadata/JWKS têm timeout, limite de tamanho e cache apenas em memória.
 
-### Assessment Engine
+## Ownership de execução
 
-Cada assessment é um script PowerShell 7 independente que reutiliza os módulos em `engine/shared`. O `hello-world` simula etapas e produz `report.html` e `summary.json` dentro de um `ZipArchive` sobre `MemoryStream`. Não há arquivo intermediário.
+A API deriva o owner de `tid + oid` autenticados. Esse valor não é aceito no body nem exposto. Cada GET, cancelamento e download compara a chave de owner em tempo constante e responde como não encontrado a outro usuário.
 
-## Ciclo de uma execução
+Um restart perde todas as executions por design.
+
+## Registry e OBO
+
+O Assessment Registry é a única origem para:
+
+- script aprovado;
+- provider/domain/visibility;
+- auth provider;
+- delegated Graph permissions;
+- timeout/habilitação.
+
+O cliente envia apenas `assessmentId` e `options`. Paths, commands, tenant, access token e Graph scopes não são aceitos.
+
+Quando `requiredAuthProvider` é `microsoft-graph`, a API usa OBO com a assertion recebida, authority construída a partir do tenant validado e scopes do registry. O Graph token não entra no estado da execution.
+
+## Runtime PowerShell
 
 ```text
-POST execution
-  -> CREATED/STARTING
-  -> processo pwsh
-  -> RUNNING + eventos de progresso
-  -> COMPLETED + Buffer ZIP em RAM
+stdin   -> contexto JSON único
+stderr  -> eventos NDJSON validados
+stdout  -> ZIP binário e nada mais
+```
+
+O contexto Graph existe apenas para assessments que o exigem. O processo recebe limites de contexto, stderr, artefato e timeout. Saída inválida, tamanho excedido ou falha causa descarte e erro público sanitizado.
+
+`CloudOps.Graph.psm1` chama REST `v1.0` com host pinning, redirect desabilitado, retry limitado, Retry-After, paginação validada e response size bound. Não há Microsoft.Graph PowerShell SDK.
+
+## Ciclo de execução
+
+```text
+STARTING
+  -> OBO (quando necessário)
+  -> RUNNING + progress
+  -> COMPLETED + ZIP Buffer em RAM
   -> download único ou TTL
-  -> wipe best-effort do Buffer
-  -> EXPIRED/remoção
+  -> wipe best-effort
+  -> remoção
+
+Falha/cancelamento
+  -> abort do processo
+  -> wipe best-effort
+  -> remoção/estado terminal temporário
 ```
 
-O status HTTP contém metadados operacionais não sensíveis; o conteúdo detalhado fica somente no artefato. O download usa `Cache-Control: no-store` e consome o artefato. A limpeza com `Buffer.fill(0)` reduz a janela de exposição, mas não é apresentada como garantia criptográfica sobre cópias internas ou garbage collection.
+O status público carrega somente metadados operacionais e `publicMetrics` agregadas por allowlist. Identidade, tenant, Graph response e evidências ficam no ZIP.
 
-## Limites de confiança e segurança
+## Limites de confiança
 
-- O body é pequeno e validado; `assessmentId` nunca vira um caminho.
-- O processo filho não usa interpolação de shell.
-- Logs aceitam identificadores de execução, status, estágio, progresso, duração e códigos sanitizados; não aceitam request body, contexto PowerShell, artifact, tokens ou dados de tenant.
-- A API usa usuário non-root, capabilities removidas e filesystem read-only no Compose.
-- Não existem banco, cache persistente, fila persistente, storage ou volume de dados.
+- CORS aceita apenas a origem exata configurada e não usa credentials.
+- Logs não recebem headers, body, contexto, claims challenge, tokens, Graph payload ou artefato.
+- O runtime Compose é read-only, sem capabilities e sem volumes de dados.
+- `/tmp` é tmpfs pequeno para necessidades internas do runtime, nunca fallback de assessment.
+- Wipe de memória gerenciada é best-effort, não garantia criptográfica.
 
-## Evolução prevista
-
-A próxima camada arquitetural adicionará autenticação Microsoft Entra na Web e na API e fluxo On-Behalf-Of para chamadas REST ao Microsoft Graph. A implantação futura alvo é Azure Container Apps. Esses componentes não estão implementados nesta fundação e deverão preservar o mesmo contrato e a política de zero retention.
+Para detalhes, consulte [authentication.md](authentication.md), [microsoft-graph.md](microsoft-graph.md) e [zero-retention.md](zero-retention.md).

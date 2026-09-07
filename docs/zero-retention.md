@@ -1,51 +1,70 @@
 # Zero Retention
 
-Zero retention é uma política obrigatória do código da aplicação: dados de assessments não são deliberadamente persistidos. A plataforma funciona mesmo sem banco, storage, Redis, fila durável ou filesystem gravável para relatórios.
+Zero Retention significa que o código da aplicação não cria uma via intencional de persistência para tokens, Graph data, findings ou artefatos. Não significa apagamento físico instantâneo verificável de cada cópia gerenciada.
 
-## Permitido
+## Dados e credenciais transitórios
 
-- dados em trânsito pelo canal de rede;
-- contexto, respostas futuras do Graph e resultados na RAM do processo durante uma execução;
-- ZIP em um `Buffer` da API até download único ou expiração;
-- estado e `Blob URL` na memória da página pelo tempo necessário ao download;
-- arquivo que o usuário escolheu explicitamente baixar.
+```text
+Microsoft identity tokens: RAM only
+CloudOps API access tokens: RAM only
+Graph tokens: RAM only
+OBO token cache: memory-only
+MSAL browser token and temporary cache: memory-only
+Graph responses: RAM only
+Execution state: RAM only
+ZIP server-side: RAM only até download único/TTL
+```
+
+O arquivo explicitamente escolhido pelo usuário no browser é a única persistência intencional de resultado.
 
 ## Proibido
 
-- banco de dados, storage de objetos, cache ou fila persistente;
-- relatório, resposta Graph, payload ou checkpoint no filesystem;
-- uso de `/tmp`, `/var/tmp` ou diretório do projeto para dados de assessment;
-- `localStorage`, `sessionStorage`, IndexedDB ou Service Worker Cache para execução/artefato;
-- tokens, bodies, artefatos, findings ou identificadores de tenant em logs e telemetria;
-- dump de `stdin`, `stdout` ou ambiente em mensagens de erro.
+- database, blob/object storage, Redis, persistent queue ou durable cache;
+- relatório, Graph response, payload ou checkpoint em filesystem;
+- fallback em `/tmp`, `/var/tmp` ou workspace;
+- localStorage, sessionStorage, IndexedDB ou Service Worker Cache para auth, Graph data, execution results ou artifacts;
+- token em URL, query, body público, state público, log ou telemetry;
+- request/response Graph, claims challenge, auth header ou client secret em logs;
+- dump de stdin/stdout/ambiente em erro.
 
-Arquivos estáticos — código-fonte, módulos, catálogo e configuração — não são dados de assessment e fazem parte normal da imagem.
+Código, documentação, registry e configuração estáticos fazem parte da imagem e não são dados de assessment. O `.env` local com client secret é uma credencial operacional sob responsabilidade do desenvolvedor, ignorada pelo Git; ele nunca é enviado ao Web.
 
-## Controles implementados
+## Controles
 
-1. O Execution Manager usa apenas um `Map` em memória; não há adapter de persistência.
-2. O PowerShell monta o ZIP com `MemoryStream`/`ZipArchive` e grava os bytes diretamente em `stdout`.
-3. A API acumula `stdout` diretamente em `Buffer`, sem arquivo temporário.
-4. O artefato expira pelo TTL (300 segundos por padrão) e é consumido após o primeiro download bem-sucedido.
-5. Buffers controlados pela aplicação são sobrescritos com zeros antes de a referência ser liberada, quando possível.
-6. O frontend revoga a `Blob URL` logo após iniciar o download.
-7. Respostas da API usam `Cache-Control: no-store`; downloads também usam headers anti-cache adicionais.
-8. Logging possui redaction de credenciais e não registra bodies ou conteúdo dos canais PowerShell.
-9. O Compose não declara volumes. A API usa root filesystem read-only. Seu `HOME` aponta para um `/tmp` em `tmpfs` pequeno, destinado exclusivamente à inicialização e a caches internos não sensíveis do Node/PowerShell, nunca a assessment data.
+1. MSAL Browser LTS usa `BrowserCacheLocation.MemoryStorage` para tokens e cache temporário; migração de cache e cookies estão desabilitados.
+2. A API valida tokens sem persisti-los; metadata/JWKS ficam em RAM. Cada troca OBO cria seu próprio client, usa `skipCache`, aborta por deadline e limpa o cache ao terminar.
+3. O Graph token OBO não entra em `ExecutionState`; é passado somente por stdin e referências são liberadas cedo.
+4. Ownership usa chave derivada, não identidade legível no estado público.
+5. O Execution Manager usa `Map` e timers em memória.
+6. PowerShell usa `MemoryStream`/`ZipArchive` e stdout binário.
+7. Graph responses possuem byte limit e buffers temporários limpos best-effort.
+8. `publicMetrics` é uma allowlist de agregados; PII e Graph details ficam somente no ZIP.
+9. Download transfere uma lease, é único e limpa o Buffer em `finish`, `close` ou `error`.
+10. TTL, falha, abort, shutdown e dispose executam cleanup.
+11. Responses usam `Cache-Control: no-store`; download acrescenta `no-cache`, `Pragma` e `Expires`.
+12. Logs registram somente lifecycle/IDs operacionais/códigos seguros, com redaction defensiva.
+13. Runtime Docker é non-root, read-only, sem capabilities/volumes; `/tmp` é tmpfs pequeno.
 
-O container Web de desenvolvimento possui uma camada gravável efêmera porque o Vite pode criar cache de build. O serviço Web não recebe o ZIP: o navegador baixa diretamente da API. Essa camada não é volume persistente nem autorização para guardar dados de assessment.
+## Limites
 
-## Validação de ausência de arquivos
+- RAM pode ser inspecionada se host, runtime ou processo estiver comprometido.
+- Strings JavaScript/.NET/PowerShell são gerenciadas e não podem ser zeradas de forma confiável.
+- `Buffer.fill(0)`/`Array.Clear` são best-effort; cópias internas e garbage collection podem sobreviver temporariamente.
+- Kernel, hipervisor, navegador e plataforma podem produzir swap, snapshot, crash dump ou diagnóstico fora do controle do app.
+- O cache em memória do MSAL se perde no refresh; novo login pode ser necessário.
+- A linha MSAL Browser LTS foi selecionada porque a v5 removeu o controle público do cache temporário. Migrar de major exige revalidar o teste de armazenamento com a biblioteca real.
+- Um restart perde executions e artefatos, intencionalmente.
+- Depois do download, descarte/proteção do arquivo é responsabilidade do usuário.
+- Operadores não devem habilitar proxy cache, body logging, dumps ou tracing de payload.
 
-`engine/tests/Validate-HelloWorld.ps1` executa o assessment real em um processo filho, mantém `stdout` em memória, valida o ZIP e compara hashes dos arquivos do projeto e, no Linux, de `/tmp`, antes/depois. Dependências estáticas em `node_modules`, IPCs do runtime e o arquivo de timing `StartupProfileData-NonInteractive` que o próprio `pwsh` reescreve a cada inicialização são excluídos. Em conjunto com o root filesystem read-only do runtime, isso demonstra que o nosso Hello World não cria ou altera arquivos de assessment nos locais graváveis do container. Não prova que sistema operacional, container host ou ferramentas externas jamais escrevam metadados próprios, nem detecta uma escrita criada e apagada integralmente entre os dois snapshots.
+## Validação
 
-## Limitações conhecidas
+- testes frontend escaneiam módulos críticos contra APIs de storage persistente;
+- um teste com MSAL real simula login popup, tokens, aquisição silenciosa e nova instância, verificando zero gravações no Web Storage e zero abertura de IndexedDB;
+- testes de logging/redaction cobrem Authorization, tokens, secrets e claims;
+- testes do Execution Manager cobrem wipe, TTL, download único, abort e cross-user isolation;
+- `Validate-HelloWorld.ps1` compara snapshots/hashes do workspace e `/tmp`;
+- `Validate-GraphModule.ps1` usa Graph fake em memória e rede desabilitada;
+- CI executa os engines em container read-only/sem rede.
 
-- RAM pode ser inspecionada se host, processo ou plataforma estiver comprometido.
-- Runtime, kernel, hipervisor e navegador podem ter comportamentos fora do controle do código da aplicação, inclusive paginação, snapshots e diagnósticos da plataforma.
-- Sobrescrever um Buffer é best-effort: cópias internas e garbage collection não oferecem apagamento físico instantâneo verificável.
-- Crash ou restart descarta o estado e torna a execução irrecuperável; isso é esperado.
-- Depois do download, proteção e descarte do arquivo passam a ser responsabilidade do usuário.
-- Operadores não devem habilitar dumps, tracing de payloads, proxy cache, gravação de bodies ou telemetria que capture conteúdo de assessment.
-
-Zero retention não significa desaparecimento físico instantâneo de cada byte. Significa que a aplicação não cria uma via intencional de retenção e reduz explicitamente a janela de exposição em memória.
+Os snapshots não detectam um arquivo criado e removido integralmente entre medições e não provam comportamento do host. Eles demonstram, junto ao código e ao filesystem read-only, que os engines não dependem de persistência.

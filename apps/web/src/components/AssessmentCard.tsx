@@ -1,24 +1,33 @@
+import type { AssessmentSummary } from "@cloudops/contracts";
+
 interface AssessmentCardProps {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  busy?: boolean;
-  onExecute: (assessmentId: string) => void;
+  readonly assessment: AssessmentSummary;
+  readonly busy?: boolean;
+  readonly onExecute: (assessmentId: string) => void;
+}
+
+function assessmentKind(assessment: AssessmentSummary): string {
+  if (assessment.requiredAuthProvider === "microsoft-graph") {
+    return "Microsoft Graph · delegated";
+  }
+
+  return assessment.visibility === "development"
+    ? "Validação de runtime · desenvolvimento"
+    : "Cloud security assessment";
 }
 
 export function AssessmentCard({
-  id,
-  name,
-  description,
-  enabled,
+  assessment,
   busy = false,
   onExecute,
 }: AssessmentCardProps) {
-  const unavailable = !enabled;
+  const unavailable = !assessment.enabled;
 
   return (
-    <article className="assessment-card" aria-labelledby={`assessment-${id}`}>
+    <article
+      className="assessment-card"
+      aria-labelledby={`assessment-${assessment.id}`}
+    >
       <div className="card-topline">
         <span className="assessment-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false">
@@ -26,25 +35,44 @@ export function AssessmentCard({
             <path d="m8.5 12 2.2 2.2 4.8-5" />
           </svg>
         </span>
-        <span className={`availability ${enabled ? "available" : "unavailable"}`}>
-          {enabled ? "Disponível" : "Indisponível"}
+        <span
+          className={`availability ${assessment.enabled ? "available" : "unavailable"}`}
+        >
+          {assessment.enabled ? "Disponível" : "Indisponível"}
         </span>
       </div>
 
       <div className="card-content">
-        <p className="assessment-kind">Validação de runtime</p>
-        <h3 id={`assessment-${id}`}>{name}</h3>
-        <p>{description}</p>
+        <p className="assessment-kind">{assessmentKind(assessment)}</p>
+        <h3 id={`assessment-${assessment.id}`}>{assessment.name}</h3>
+        <p>
+          {assessment.description ??
+            "Execute esta avaliação pelo pipeline seguro e efêmero do CloudOps."}
+        </p>
+
+        {assessment.requiredPermissions.length > 0 && (
+          <div className="permission-block">
+            <span>Permissões necessárias</span>
+            <div className="permission-list">
+              {assessment.requiredPermissions.map((permission) => (
+                <code key={permission}>{permission}</code>
+              ))}
+            </div>
+            {assessment.adminConsentRequired && (
+              <small>Admin consent may be required</small>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card-footer">
-        <code>{id}</code>
+        <code>{assessment.id}</code>
         <button
           className="button button-secondary"
           type="button"
           disabled={unavailable || busy}
-          aria-label={`Executar ${name}`}
-          onClick={() => onExecute(id)}
+          aria-label={`Executar ${assessment.name}`}
+          onClick={() => onExecute(assessment.id)}
         >
           {busy ? "Em execução" : "Executar"}
           {!busy && <span aria-hidden="true">→</span>}

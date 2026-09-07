@@ -6,6 +6,11 @@ import {
   AssessmentSummarySchema,
   type AssessmentId,
   type AssessmentSummary,
+  type AssessmentAuthProvider,
+  type AssessmentVisibility,
+  type CloudProvider,
+  type GraphPermission,
+  type OperationalDomain,
 } from "@cloudops/contracts";
 
 import { errors } from "../errors.js";
@@ -17,6 +22,12 @@ export interface AssessmentRegistration {
   readonly scriptRelativePath: string;
   readonly enabled: boolean;
   readonly timeoutMs: number;
+  readonly provider: CloudProvider;
+  readonly domain: OperationalDomain;
+  readonly visibility: AssessmentVisibility;
+  readonly requiredAuthProvider: AssessmentAuthProvider;
+  readonly requiredPermissions: readonly GraphPermission[];
+  readonly adminConsentRequired: boolean;
 }
 
 export interface RegisteredAssessment extends AssessmentSummary {
@@ -36,6 +47,30 @@ const DEFAULT_REGISTRATIONS: readonly AssessmentRegistration[] = [
     ),
     enabled: true,
     timeoutMs: 30_000,
+    provider: "azure",
+    domain: "devops",
+    visibility: "development",
+    requiredAuthProvider: "none",
+    requiredPermissions: [],
+    adminConsentRequired: false,
+  },
+  {
+    id: "microsoft-graph-connectivity",
+    name: "Microsoft Graph Connectivity",
+    description:
+      "Validates delegated Microsoft Graph access for the connected tenant.",
+    scriptRelativePath: path.join(
+      "microsoft-graph-connectivity",
+      "Invoke-Assessment.ps1",
+    ),
+    enabled: true,
+    timeoutMs: 60_000,
+    provider: "azure",
+    domain: "secops",
+    visibility: "public",
+    requiredAuthProvider: "microsoft-graph",
+    requiredPermissions: ["User.Read"],
+    adminConsentRequired: false,
   },
 ];
 
@@ -106,16 +141,32 @@ export class AssessmentRegistry {
           ? { description: registration.description }
           : {}),
         enabled: registration.enabled,
+        provider: registration.provider,
+        domain: registration.domain,
+        visibility: registration.visibility,
+        requiredAuthProvider: registration.requiredAuthProvider,
+        requiredPermissions: [...registration.requiredPermissions],
+        adminConsentRequired: registration.adminConsentRequired,
       });
 
-      this.#assessments.set(id, {
+      if (
+        (publicAssessment.requiredAuthProvider === "none" &&
+          publicAssessment.requiredPermissions.length !== 0) ||
+        (publicAssessment.requiredAuthProvider === "microsoft-graph" &&
+          (publicAssessment.provider !== "azure" ||
+            publicAssessment.requiredPermissions.length === 0))
+      ) {
+        throw new Error("Assessment authentication metadata is inconsistent");
+      }
+
+      this.#assessments.set(id, Object.freeze({
         ...publicAssessment,
         scriptPath: resolveRegisteredScript(
           engineRoot,
           registration.scriptRelativePath,
         ),
         timeoutMs: registration.timeoutMs,
-      });
+      }));
     }
   }
 
@@ -127,6 +178,14 @@ export class AssessmentRegistry {
         ? { description: assessment.description }
         : {}),
       enabled: assessment.enabled,
+      provider: assessment.provider,
+      domain: assessment.domain,
+      visibility: assessment.visibility,
+      requiredAuthProvider: assessment.requiredAuthProvider,
+      requiredPermissions: Object.freeze([
+        ...assessment.requiredPermissions,
+      ]),
+      adminConsentRequired: assessment.adminConsentRequired,
     }));
   }
 

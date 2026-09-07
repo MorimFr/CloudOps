@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { CloudOpsError } from "../src/errors.js";
 import {
   AssessmentRegistry,
+  createDefaultAssessmentRegistry,
   type AssessmentRegistration,
 } from "../src/services/assessment-registry.js";
 
@@ -14,9 +15,42 @@ const registration: AssessmentRegistration = {
   scriptRelativePath: path.join("hello-world", "Invoke-Assessment.ps1"),
   enabled: true,
   timeoutMs: 30_000,
+  provider: "azure",
+  domain: "devops",
+  visibility: "development",
+  requiredAuthProvider: "none",
+  requiredPermissions: [],
+  adminConsentRequired: false,
 };
 
 describe("AssessmentRegistry", () => {
+  it("registers the development hello-world and public Graph assessment", () => {
+    const assessments = createDefaultAssessmentRegistry(
+      path.resolve("engine"),
+    ).list();
+
+    expect(assessments).toEqual([
+      expect.objectContaining({
+        id: "hello-world",
+        provider: "azure",
+        domain: "devops",
+        visibility: "development",
+        requiredAuthProvider: "none",
+        requiredPermissions: [],
+        adminConsentRequired: false,
+      }),
+      expect.objectContaining({
+        id: "microsoft-graph-connectivity",
+        provider: "azure",
+        domain: "secops",
+        visibility: "public",
+        requiredAuthProvider: "microsoft-graph",
+        requiredPermissions: ["User.Read"],
+        adminConsentRequired: false,
+      }),
+    ]);
+  });
+
   it("does not resolve an unknown assessment", () => {
     const registry = new AssessmentRegistry(path.resolve("engine"), [
       registration,
@@ -42,8 +76,37 @@ describe("AssessmentRegistry", () => {
       id: "hello-world",
       name: "Hello World Assessment",
       enabled: true,
+      provider: "azure",
+      domain: "devops",
+      visibility: "development",
+      requiredAuthProvider: "none",
+      requiredPermissions: [],
+      adminConsentRequired: false,
     });
     expect(assessment).not.toHaveProperty("scriptPath");
+  });
+
+  it("copies and freezes permission metadata at the registry boundary", () => {
+    const requiredPermissions: "User.Read"[] = ["User.Read"];
+    const registry = new AssessmentRegistry(path.resolve("engine"), [
+      {
+        ...registration,
+        id: "graph-connectivity",
+        provider: "azure",
+        domain: "secops",
+        visibility: "public",
+        requiredAuthProvider: "microsoft-graph",
+        requiredPermissions,
+      },
+    ]);
+    requiredPermissions.length = 0;
+
+    const [assessment] = registry.list();
+    expect(assessment?.requiredPermissions).toEqual(["User.Read"]);
+    expect(Object.isFrozen(assessment?.requiredPermissions)).toBe(true);
+    expect(registry.resolve("graph-connectivity").requiredPermissions).toEqual([
+      "User.Read",
+    ]);
   });
 
   it("rejects registry paths that escape the trusted engine root", () => {

@@ -2,8 +2,15 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 
 import {
   AssessmentExecutionRequestSchema,
+  AssessmentSummarySchema,
+  ASSESSMENT_AUTH_PROVIDERS,
+  ASSESSMENT_VISIBILITIES,
+  CLOUD_PROVIDERS,
   EXECUTION_STATUSES,
+  GRAPH_PERMISSIONS,
+  OPERATIONAL_DOMAINS,
   ExecutionSchema,
+  PublicMetricsSchema,
   PowerShellControlEventSchema,
   type AssessmentExecutionRequest,
   type ExecutionStatus,
@@ -63,6 +70,75 @@ describe("shared contracts", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("requires strict multicloud assessment metadata", () => {
+    expect(CLOUD_PROVIDERS).toEqual(["azure", "aws", "gcp"]);
+    expect(OPERATIONAL_DOMAINS).toEqual([
+      "dashboard",
+      "govops",
+      "secops",
+      "finops",
+      "devops",
+    ]);
+    expect(ASSESSMENT_VISIBILITIES).toEqual(["public", "development"]);
+    expect(ASSESSMENT_AUTH_PROVIDERS).toEqual(["none", "microsoft-graph"]);
+    expect(GRAPH_PERMISSIONS).toEqual(["User.Read"]);
+
+    expect(
+      AssessmentSummarySchema.parse({
+        id: "microsoft-graph-connectivity",
+        name: "Microsoft Graph Connectivity",
+        enabled: true,
+        provider: "azure",
+        domain: "secops",
+        visibility: "public",
+        requiredAuthProvider: "microsoft-graph",
+        requiredPermissions: ["User.Read"],
+        adminConsentRequired: false,
+      }),
+    ).toMatchObject({ provider: "azure", domain: "secops" });
+
+    expect(
+      AssessmentSummarySchema.safeParse({
+        id: "unsafe",
+        name: "Unsafe",
+        enabled: true,
+        provider: "other",
+        domain: "secops",
+        visibility: "public",
+        requiredAuthProvider: "microsoft-graph",
+        requiredPermissions: ["Directory.ReadWrite.All"],
+        adminConsentRequired: false,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("allows only aggregate public metrics without PII or nesting", () => {
+    expect(
+      PublicMetricsSchema.parse({
+        findings: 2,
+        objectsAnalyzed: 100,
+        requestsCompleted: 1,
+        graphReachable: true,
+      }),
+    ).toEqual({
+      findings: 2,
+      objectsAnalyzed: 100,
+      requestsCompleted: 1,
+      graphReachable: true,
+    });
+
+    for (const invalid of [
+      { userPrincipalName: "person@example.com" },
+      { tenantId: "00000000-0000-4000-8000-000000000000" },
+      { findings: "2" },
+      { findings: { critical: 2 } },
+      { findings: -1 },
+      { findings: 1.5 },
+    ]) {
+      expect(PublicMetricsSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
   it("accepts only sanitized PowerShell failure events", () => {
     expect(
       PowerShellControlEventSchema.parse({
@@ -71,6 +147,13 @@ describe("shared contracts", () => {
         message: "The assessment could not be completed.",
       }),
     ).toMatchObject({ type: "error", code: "ASSESSMENT_FAILED" });
+
+    expect(
+      PowerShellControlEventSchema.parse({
+        type: "publicMetrics",
+        publicMetrics: { graphReachable: true, requestsCompleted: 1 },
+      }),
+    ).toMatchObject({ type: "publicMetrics" });
 
     expect(
       PowerShellControlEventSchema.safeParse({

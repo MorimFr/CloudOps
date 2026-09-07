@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 
 import { errors } from "../errors.js";
+import type { EntraAuth } from "../auth/entra-auth.js";
 import type {
   ArtifactLease,
   ExecutionManager,
@@ -58,17 +59,25 @@ function sendArtifact(
 export function registerExecutionRoutes(
   app: FastifyInstance,
   executionManager: ExecutionManager,
+  auth: EntraAuth,
 ): void {
   app.get("/api/v1/executions/:executionId", async (request, reply) => {
     const executionId = parseExecutionId(request.params);
-    return reply.send(executionManager.require(executionId));
+    const { principal } = auth.require(request);
+    return reply.send(
+      executionManager.require(executionId, principal.ownerKey),
+    );
   });
 
   app.get(
     "/api/v1/executions/:executionId/artifact",
     async (request, reply) => {
       const executionId = parseExecutionId(request.params);
-      const lease = executionManager.checkoutArtifact(executionId);
+      const { principal } = auth.require(request);
+      const lease = executionManager.checkoutArtifact(
+        executionId,
+        principal.ownerKey,
+      );
       return sendArtifact(reply, executionId, lease);
     },
   );
@@ -77,7 +86,8 @@ export function registerExecutionRoutes(
     "/api/v1/executions/:executionId",
     async (request, reply) => {
       const executionId = parseExecutionId(request.params);
-      if (!executionManager.cancel(executionId)) {
+      const { principal } = auth.require(request);
+      if (!executionManager.cancel(executionId, principal.ownerKey)) {
         throw errors.executionNotFound();
       }
       return reply.code(204).send();

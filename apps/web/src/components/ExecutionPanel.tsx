@@ -1,4 +1,8 @@
-import type { Execution, ExecutionStatus } from "@cloudops/contracts";
+import type {
+  Execution,
+  ExecutionStatus,
+  PublicMetrics,
+} from "@cloudops/contracts";
 import { ProgressBar } from "./ProgressBar";
 import { StatusBadge } from "./StatusBadge";
 
@@ -9,24 +13,26 @@ export type ExecutionPanelModel = Pick<
   | "status"
   | "stage"
   | "progress"
-  | "summary"
+  | "publicMetrics"
   | "artifactAvailable"
   | "expiresAt"
 >;
 
 interface ExecutionPanelProps {
-  execution: ExecutionPanelModel;
-  assessmentName: string;
-  downloading: boolean;
-  downloadComplete: boolean;
-  error: string | null;
-  onDownload: () => void;
-  onClose: () => void;
+  readonly execution: ExecutionPanelModel;
+  readonly assessmentName: string;
+  readonly downloading: boolean;
+  readonly downloadComplete: boolean;
+  readonly error: string | null;
+  readonly onDownload: () => void;
+  readonly onClose: () => void;
 }
 
 const STAGE_LABELS: Record<string, string> = {
   INITIALIZING: "Preparando ambiente",
+  AUTHENTICATING: "Validando acesso delegado",
   PROCESSING: "Processando avaliação",
+  QUERYING_GRAPH: "Consultando Microsoft Graph",
   GENERATING_REPORT: "Gerando relatório",
   COMPLETED: "Relatório concluído",
 };
@@ -39,20 +45,40 @@ const TERMINAL_STATUSES: ReadonlySet<ExecutionStatus> = new Set([
 
 const EXECUTION_STEPS = [
   { key: "INITIALIZING", label: "Iniciando" },
+  { key: "AUTHENTICATING", label: "Autenticando" },
   { key: "PROCESSING", label: "Processando" },
   { key: "GENERATING_REPORT", label: "Gerando relatório" },
   { key: "COMPLETED", label: "Concluído" },
 ] as const;
+
+const STAGE_STEP: Record<string, number> = {
+  INITIALIZING: 0,
+  AUTHENTICATING: 1,
+  PROCESSING: 2,
+  QUERYING_GRAPH: 2,
+  GENERATING_REPORT: 3,
+  COMPLETED: 4,
+};
+
+const FAILURE_MESSAGES: Readonly<Record<string, string>> = {
+  GRAPH_CONSENT_REQUIRED:
+    "O tenant ainda não concedeu uma ou mais permissões exigidas por este assessment.",
+  GRAPH_INSUFFICIENT_PRIVILEGES:
+    "A operação pode exigir delegated permission, consentimento ou autorização adicional da conta.",
+  GRAPH_AUTHENTICATION_FAILED:
+    "Não foi possível validar o acesso delegado ao Microsoft Graph.",
+  GRAPH_THROTTLED:
+    "O Microsoft Graph limitou as requisições. Aguarde antes de tentar novamente.",
+  GRAPH_UNAVAILABLE:
+    "O Microsoft Graph está temporariamente indisponível.",
+};
 
 function currentStepIndex(execution: ExecutionPanelModel): number {
   if (execution.status === "COMPLETED") {
     return EXECUTION_STEPS.length;
   }
 
-  const stageIndex = EXECUTION_STEPS.findIndex(
-    (step) => step.key === execution.stage,
-  );
-  return stageIndex >= 0 ? stageIndex : 0;
+  return execution.stage ? (STAGE_STEP[execution.stage] ?? 0) : 0;
 }
 
 function displayStage(stage: string | null, status: ExecutionStatus): string {
@@ -60,31 +86,19 @@ function displayStage(stage: string | null, status: ExecutionStatus): string {
     return STAGE_LABELS[stage];
   }
 
-  if (stage) {
-    return stage
-      .toLowerCase()
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
-  }
-
   if (status === "CREATED" || status === "STARTING") {
     return "Iniciando execução";
   }
-
   if (status === "FAILED") {
     return "A execução foi interrompida";
   }
-
   if (status === "EXPIRED") {
     return "O artefato expirou";
   }
 
-  return status === "COMPLETED" ? "Relatório concluído" : "Processando avaliação";
-}
-
-function summaryMessage(summary: Record<string, unknown> | undefined): string | null {
-  return typeof summary?.message === "string" ? summary.message : null;
+  return status === "COMPLETED"
+    ? "Relatório concluído"
+    : "Processando avaliação";
 }
 
 function expiryText(expiresAt: string | null): string | null {
@@ -103,6 +117,54 @@ function expiryText(expiresAt: string | null): string | null {
   });
 }
 
+function PublicMetricsView({ metrics }: { readonly metrics: PublicMetrics }) {
+  const entries = [
+    metrics.graphReachable === undefined
+      ? null
+      : {
+          key: "graphReachable",
+          label: "Microsoft Graph",
+          value: metrics.graphReachable ? "Acessível" : "Indisponível",
+        },
+    metrics.requestsCompleted === undefined
+      ? null
+      : {
+          key: "requestsCompleted",
+          label: "Requisições",
+          value: metrics.requestsCompleted.toLocaleString("pt-BR"),
+        },
+    metrics.objectsAnalyzed === undefined
+      ? null
+      : {
+          key: "objectsAnalyzed",
+          label: "Objetos analisados",
+          value: metrics.objectsAnalyzed.toLocaleString("pt-BR"),
+        },
+    metrics.findings === undefined
+      ? null
+      : {
+          key: "findings",
+          label: "Findings",
+          value: metrics.findings.toLocaleString("pt-BR"),
+        },
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <dl className="public-metrics" aria-label="Métricas públicas agregadas">
+      {entries.map((entry) => (
+        <div key={entry.key}>
+          <dt>{entry.label}</dt>
+          <dd>{entry.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function ExecutionPanel({
   execution,
   assessmentName,
@@ -113,11 +175,14 @@ export function ExecutionPanel({
   onClose,
 }: ExecutionPanelProps) {
   const isTerminal = TERMINAL_STATUSES.has(execution.status);
-  const message = summaryMessage(execution.summary);
   const expiresAt = expiryText(execution.expiresAt);
   const canDownload =
     execution.status === "COMPLETED" && execution.artifactAvailable;
   const activeStep = currentStepIndex(execution);
+  const failureMessage =
+    execution.status === "FAILED" && execution.stage
+      ? FAILURE_MESSAGES[execution.stage]
+      : undefined;
 
   return (
     <aside
@@ -134,12 +199,9 @@ export function ExecutionPanel({
           type="button"
           className="icon-button"
           onClick={onClose}
+          disabled={!isTerminal}
           aria-label="Fechar painel da execução"
-          title={
-            isTerminal
-              ? "Fechar painel"
-              : "Fechar e parar de acompanhar nesta página"
-          }
+          title={isTerminal ? "Fechar painel" : "A execução ainda está ativa"}
         >
           <span aria-hidden="true">×</span>
         </button>
@@ -192,7 +254,9 @@ export function ExecutionPanel({
         })}
       </ol>
 
-      {message && <p className="summary-message">{message}</p>}
+      {execution.publicMetrics && (
+        <PublicMetricsView metrics={execution.publicMetrics} />
+      )}
 
       {error && (
         <div className="notice notice-error" role="alert">
@@ -204,7 +268,11 @@ export function ExecutionPanel({
       {execution.status === "FAILED" && !error && (
         <div className="notice notice-error" role="alert">
           <strong>A avaliação não pôde ser concluída.</strong>
-          <span>Nenhum artefato foi mantido.</span>
+          <span>
+            {failureMessage
+              ? `${failureMessage} Nenhum artefato foi mantido.`
+              : "Nenhum artefato foi mantido."}
+          </span>
         </div>
       )}
 

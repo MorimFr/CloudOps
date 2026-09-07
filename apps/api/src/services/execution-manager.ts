@@ -1,14 +1,18 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
   AssessmentExecutionRequestSchema,
+  PublicMetricsSchema,
   type AssessmentExecutionRequest,
   type CreateExecutionResponse,
   type Execution,
   type ExecutionStatus,
+  type PublicMetrics,
 } from "@cloudops/contracts";
 
 import { errors } from "../errors.js";
+import type { ValidatedApiToken } from "../auth/token-validator.js";
+import type { GraphTokenBroker } from "../auth/obo-service.js";
 import type {
   AssessmentRegistry,
   RegisteredAssessment,
@@ -17,18 +21,20 @@ import {
   PowerShellRuntimeError,
   type AssessmentRuntime,
   type RuntimeErrorCode,
+  type RuntimeGraphAuthContext,
 } from "./powershell-runtime.js";
 
 interface ExecutionState {
   readonly executionId: string;
   readonly assessmentId: string;
+  readonly ownerKey: string;
   status: ExecutionStatus;
   stage: string | null;
   progress: number;
   readonly createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
-  summary: Record<string, unknown> | undefined;
+  publicMetrics: PublicMetrics | undefined;
   artifact: Buffer | undefined;
   readonly leasedArtifacts: Set<Buffer>;
   expiresAt: string | null;
@@ -57,9 +63,11 @@ export interface ExecutionManagerOptions {
   readonly runtime: AssessmentRuntime;
   readonly artifactTtlMs?: number;
   readonly maxConcurrentExecutions?: number;
+  readonly graphTokenTimeoutMs?: number;
   readonly idFactory?: () => string;
   readonly now?: () => number;
   readonly onLifecycleEvent?: (event: ExecutionLifecycleEvent) => void;
+  readonly graphTokenBroker?: GraphTokenBroker;
 }
 
 const ACTIVE_STATUSES = new Set<ExecutionStatus>([
@@ -78,15 +86,53 @@ function bestEffortWipe(buffer: Buffer | undefined): void {
   buffer?.fill(0);
 }
 
+const RESERVED_OPTION_KEYS = new Set([
+  "auth",
+  "tenantid",
+  "accesstoken",
+  "scopes",
+  "authority",
+  "scriptpath",
+  "requiredpermissions",
+]);
+
+function hasReservedOptionKey(value: unknown, depth = 0): boolean {
+  if (depth > 32) {
+    return true;
+  }
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasReservedOptionKey(entry, depth + 1));
+  }
+  return Object.entries(value).some(
+    ([key, entry]) =>
+      RESERVED_OPTION_KEYS.has(key.toLowerCase().replaceAll(/[-_.]/g, "")) ||
+      hasReservedOptionKey(entry, depth + 1),
+  );
+}
+
+function sameOwner(expected: string, actual: string): boolean {
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const actualBytes = Buffer.from(actual, "utf8");
+  return (
+    expectedBytes.length === actualBytes.length &&
+    timingSafeEqual(expectedBytes, actualBytes)
+  );
+}
+
 export class ExecutionManager {
   readonly #executions = new Map<string, ExecutionState>();
   readonly #registry: AssessmentRegistry;
   readonly #runtime: AssessmentRuntime;
   readonly #artifactTtlMs: number;
   readonly #maxConcurrentExecutions: number;
+  readonly #graphTokenTimeoutMs: number;
   readonly #idFactory: () => string;
   readonly #now: () => number;
   readonly #onLifecycleEvent?: (event: ExecutionLifecycleEvent) => void;
+  readonly #graphTokenBroker?: GraphTokenBroker;
   #disposed = false;
 
   public constructor(options: ExecutionManagerOptions) {
@@ -94,9 +140,11 @@ export class ExecutionManager {
     this.#runtime = options.runtime;
     this.#artifactTtlMs = options.artifactTtlMs ?? 5 * 60_000;
     this.#maxConcurrentExecutions = options.maxConcurrentExecutions ?? 2;
+    this.#graphTokenTimeoutMs = options.graphTokenTimeoutMs ?? 15_000;
     this.#idFactory = options.idFactory ?? (() => `EXE-${randomUUID()}`);
     this.#now = options.now ?? Date.now;
     this.#onLifecycleEvent = options.onLifecycleEvent;
+    this.#graphTokenBroker = options.graphTokenBroker;
 
     if (
       !Number.isSafeInteger(this.#artifactTtlMs) ||
@@ -110,9 +158,19 @@ export class ExecutionManager {
     ) {
       throw new Error("Maximum concurrency must be a positive integer");
     }
+    if (
+      !Number.isSafeInteger(this.#graphTokenTimeoutMs) ||
+      this.#graphTokenTimeoutMs < 1 ||
+      this.#graphTokenTimeoutMs > 120_000
+    ) {
+      throw new Error("Graph token timeout is outside the allowed range");
+    }
   }
 
-  public create(request: AssessmentExecutionRequest): CreateExecutionResponse {
+  public async create(
+    request: AssessmentExecutionRequest,
+    authenticated: ValidatedApiToken,
+  ): Promise<CreateExecutionResponse> {
     if (this.#disposed) {
       throw new Error("Execution manager has been disposed");
     }
@@ -125,6 +183,13 @@ export class ExecutionManager {
     const assessment = this.#registry.resolve(parsed.data.assessmentId);
     if (this.#activeExecutionCount() >= this.#maxConcurrentExecutions) {
       throw errors.capacityReached();
+    }
+
+    if (
+      !/^[A-Za-z0-9_-]{43}$/.test(authenticated.principal.ownerKey) ||
+      hasReservedOptionKey(parsed.data.options)
+    ) {
+      throw errors.invalidRequest();
     }
 
     let executionOptions: Record<string, unknown>;
@@ -142,13 +207,14 @@ export class ExecutionManager {
     const state: ExecutionState = {
       executionId,
       assessmentId: assessment.id,
+      ownerKey: authenticated.principal.ownerKey,
       status: "STARTING",
       stage: "STARTING",
       progress: 0,
       createdAt: new Date(createdAtMs).toISOString(),
       startedAt: null,
       completedAt: null,
-      summary: undefined,
+      publicMetrics: undefined,
       artifact: undefined,
       leasedArtifacts: new Set(),
       expiresAt: null,
@@ -156,31 +222,70 @@ export class ExecutionManager {
       abortController: new AbortController(),
     };
     this.#executions.set(executionId, state);
-    this.#emitLifecycle(state);
 
+    let runtimeAuth: RuntimeGraphAuthContext | undefined;
+    try {
+      if (assessment.requiredAuthProvider === "microsoft-graph") {
+        if (!this.#graphTokenBroker) {
+          throw errors.graphAuthenticationFailed();
+        }
+        const graphToken = await this.#acquireGraphToken({
+          incomingApiAccessToken: authenticated.accessToken,
+          tenantId: authenticated.principal.tenantId,
+          requiredPermissions: assessment.requiredPermissions,
+          signal: state.abortController.signal,
+        });
+        runtimeAuth = {
+          provider: "microsoft-graph",
+          tenantId: authenticated.principal.tenantId,
+          accessToken: graphToken.accessToken,
+        };
+      }
+    } catch (error) {
+      this.#destroyState(state);
+      this.#executions.delete(executionId);
+      throw error;
+    }
+
+    if (this.#disposed || this.#executions.get(executionId) !== state) {
+      this.#destroyState(state);
+      throw new Error("Execution manager stopped before execution start");
+    }
+
+    this.#emitLifecycle(state);
     queueMicrotask(() => {
-      void this.#runExecution(state, assessment, executionOptions);
+      void this.#runExecution(
+        state,
+        assessment,
+        executionOptions,
+        runtimeAuth,
+      );
     });
 
     return { executionId, status: "STARTING" };
   }
 
-  public get(executionId: string): Execution | undefined {
+  public get(executionId: string, ownerKey: string): Execution | undefined {
     const state = this.#executions.get(executionId);
-    return state ? this.#snapshot(state) : undefined;
+    return state && sameOwner(state.ownerKey, ownerKey)
+      ? this.#snapshot(state)
+      : undefined;
   }
 
-  public require(executionId: string): Execution {
-    const execution = this.get(executionId);
+  public require(executionId: string, ownerKey: string): Execution {
+    const execution = this.get(executionId, ownerKey);
     if (!execution) {
       throw errors.executionNotFound();
     }
     return execution;
   }
 
-  public checkoutArtifact(executionId: string): ArtifactLease {
+  public checkoutArtifact(
+    executionId: string,
+    ownerKey: string,
+  ): ArtifactLease {
     const state = this.#executions.get(executionId);
-    if (!state) {
+    if (!state || !sameOwner(state.ownerKey, ownerKey)) {
       throw errors.executionNotFound();
     }
     if (state.status !== "COMPLETED") {
@@ -208,9 +313,9 @@ export class ExecutionManager {
     };
   }
 
-  public cancel(executionId: string): boolean {
+  public cancel(executionId: string, ownerKey: string): boolean {
     const state = this.#executions.get(executionId);
-    if (!state) {
+    if (!state || !sameOwner(state.ownerKey, ownerKey)) {
       return false;
     }
 
@@ -243,6 +348,46 @@ export class ExecutionManager {
     return active;
   }
 
+  async #acquireGraphToken(
+    request: Parameters<GraphTokenBroker["acquireToken"]>[0],
+  ): Promise<Awaited<ReturnType<GraphTokenBroker["acquireToken"]>>> {
+    if (!this.#graphTokenBroker) {
+      throw errors.graphAuthenticationFailed();
+    }
+
+    let timeout: NodeJS.Timeout | undefined;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    request.signal?.addEventListener("abort", abort, { once: true });
+    if (request.signal?.aborted) controller.abort();
+    let rejectDeadline: (() => void) | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+      rejectDeadline = () => reject(errors.graphUnavailable());
+      controller.signal.addEventListener("abort", rejectDeadline, { once: true });
+      timeout = setTimeout(
+        () => controller.abort(),
+        this.#graphTokenTimeoutMs,
+      );
+      timeout.unref();
+    });
+
+    try {
+      if (controller.signal.aborted) throw errors.graphUnavailable();
+      // The injected MSAL transport aborts the HTTP operation on deadline or
+      // shutdown. The race also bounds adapters that ignore the signal.
+      return await Promise.race([
+        this.#graphTokenBroker.acquireToken({ ...request, signal: controller.signal }),
+        deadline,
+      ]);
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      request.signal?.removeEventListener("abort", abort);
+      if (rejectDeadline) controller.signal.removeEventListener("abort", rejectDeadline);
+    }
+  }
+
   #createUniqueExecutionId(): string {
     for (let attempt = 0; attempt < 16; attempt += 1) {
       const candidate = this.#idFactory();
@@ -263,15 +408,26 @@ export class ExecutionManager {
     initialState: ExecutionState,
     assessment: RegisteredAssessment,
     options: Record<string, unknown>,
+    runtimeAuth: RuntimeGraphAuthContext | undefined,
   ): Promise<void> {
+    if (
+      this.#disposed ||
+      this.#executions.get(initialState.executionId) !== initialState ||
+      !ACTIVE_STATUSES.has(initialState.status)
+    ) {
+      return;
+    }
+
     try {
-      const result = await this.#runtime.execute({
+      let runtimeContext: import("./powershell-runtime.js").RuntimeExecutionContext | undefined = {
+        executionId: initialState.executionId,
+        assessmentId: assessment.id,
+        options,
+        ...(runtimeAuth ? { auth: runtimeAuth } : {}),
+      };
+      const operation = this.#runtime.execute({
         assessment,
-        context: {
-          executionId: initialState.executionId,
-          assessmentId: assessment.id,
-          options,
-        },
+        context: runtimeContext,
         signal: initialState.abortController.signal,
         onStarted: () => {
           const state = this.#executions.get(initialState.executionId);
@@ -297,11 +453,22 @@ export class ExecutionManager {
           this.#emitLifecycle(state);
         },
       });
+      runtimeContext = undefined;
+      runtimeAuth = undefined;
+      const result = await operation;
 
       const state = this.#executions.get(initialState.executionId);
       if (!state || !ACTIVE_STATUSES.has(state.status)) {
         bestEffortWipe(result.artifact);
         return;
+      }
+
+      const parsedPublicMetrics = PublicMetricsSchema.safeParse(
+        result.publicMetrics,
+      );
+      if (result.publicMetrics !== undefined && !parsedPublicMetrics.success) {
+        bestEffortWipe(result.artifact);
+        throw new PowerShellRuntimeError("INVALID_CONTROL_OUTPUT");
       }
 
       const completedAtMs = this.#now();
@@ -310,8 +477,8 @@ export class ExecutionManager {
       state.stage = "COMPLETED";
       state.progress = 100;
       state.completedAt = new Date(completedAtMs).toISOString();
-      state.summary = result.summary
-        ? structuredClone(result.summary)
+      state.publicMetrics = parsedPublicMetrics.success
+        ? structuredClone(parsedPublicMetrics.data)
         : undefined;
       state.artifact = result.artifact;
       this.#scheduleExpiry(state, completedAtMs);
@@ -332,7 +499,7 @@ export class ExecutionManager {
       state.status = "FAILED";
       state.stage = runtimeErrorCode;
       state.completedAt = new Date(completedAtMs).toISOString();
-      state.summary = undefined;
+      state.publicMetrics = undefined;
       bestEffortWipe(state.artifact);
       state.artifact = undefined;
       this.#scheduleExpiry(state, completedAtMs);
@@ -378,8 +545,8 @@ export class ExecutionManager {
       createdAt: state.createdAt,
       startedAt: state.startedAt,
       completedAt: state.completedAt,
-      ...(state.summary
-        ? { summary: structuredClone(state.summary) }
+      ...(state.publicMetrics
+        ? { publicMetrics: structuredClone(state.publicMetrics) }
         : {}),
       artifactAvailable: state.artifact !== undefined,
       expiresAt: state.expiresAt,
@@ -397,7 +564,7 @@ export class ExecutionManager {
       leasedArtifact.fill(0);
     }
     state.leasedArtifacts.clear();
-    state.summary = undefined;
+    state.publicMetrics = undefined;
   }
 
   #emitLifecycle(

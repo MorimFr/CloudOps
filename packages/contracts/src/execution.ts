@@ -18,7 +18,22 @@ export const ExecutionIdSchema = z
   .string()
   .regex(/^EXE-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 
-export const ExecutionSummarySchema = z.record(z.string(), z.unknown());
+const AggregateCounterSchema = z
+  .number()
+  .int()
+  .nonnegative()
+  .max(Number.MAX_SAFE_INTEGER);
+
+export const PublicMetricsSchema = z
+  .object({
+    findings: AggregateCounterSchema.optional(),
+    objectsAnalyzed: AggregateCounterSchema.optional(),
+    requestsCompleted: AggregateCounterSchema.optional(),
+    graphReachable: z.boolean().optional(),
+  })
+  .strict();
+
+export type PublicMetrics = z.infer<typeof PublicMetricsSchema>;
 
 export const ExecutionSchema = z
   .object({
@@ -30,7 +45,7 @@ export const ExecutionSchema = z
     createdAt: z.string().datetime({ offset: true }),
     startedAt: z.string().datetime({ offset: true }).nullable(),
     completedAt: z.string().datetime({ offset: true }).nullable(),
-    summary: ExecutionSummarySchema.optional(),
+    publicMetrics: PublicMetricsSchema.optional(),
     artifactAvailable: z.boolean(),
     expiresAt: z.string().datetime({ offset: true }).nullable(),
   })

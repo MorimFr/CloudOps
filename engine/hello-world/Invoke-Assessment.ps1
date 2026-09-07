@@ -14,7 +14,7 @@ Import-Module (Join-Path $sharedDirectory 'CloudOps.Execution.psm1') -Force -Dis
 Import-Module (Join-Path $sharedDirectory 'CloudOps.Security.psm1') -Force -DisableNameChecking
 
 $archiveStream = $null
-$artifactBytes = $null
+$artifactBuffer = $null
 $reportBytes = $null
 $summaryBytes = $null
 
@@ -102,22 +102,22 @@ try {
         $archive.Dispose()
     }
 
-    $artifactBytes = $archiveStream.ToArray()
+    $artifactBuffer = $archiveStream.GetBuffer()
+    $artifactLength = [int] $archiveStream.Length
 
-    Write-CloudOpsSummary -Summary ([ordered]@{
-        message = 'Assessment completed successfully.'
+    Write-CloudOpsPublicMetrics -PublicMetrics ([ordered]@{
         findings = 0
     })
     Write-CloudOpsProgress -Stage 'COMPLETED' -Progress 100
-    Write-CloudOpsArtifact -Bytes $artifactBytes
+    Write-CloudOpsArtifact -Bytes $artifactBuffer -Count $artifactLength
 }
 catch {
-    Write-CloudOpsFailure -Code 'ASSESSMENT_FAILED' -Message 'The assessment could not be completed.'
+    Write-CloudOpsFailure -Code 'ASSESSMENT_FAILED'
     exit 1
 }
 finally {
-    if ($null -ne $artifactBytes) {
-        [Array]::Clear($artifactBytes, 0, $artifactBytes.Length)
+    if ($null -ne $artifactBuffer) {
+        [Array]::Clear($artifactBuffer, 0, $artifactBuffer.Length)
     }
     if ($null -ne $reportBytes) {
         [Array]::Clear($reportBytes, 0, $reportBytes.Length)

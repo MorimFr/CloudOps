@@ -20,7 +20,7 @@ export class ImmediateRuntime implements AssessmentRuntime {
     this.artifacts.push(artifact);
     return {
       artifact,
-      summary: { message: "assessment completed" },
+      publicMetrics: { findings: 0, objectsAnalyzed: 1 },
       exitCode: 0,
     };
   }

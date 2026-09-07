@@ -9,6 +9,16 @@ import { ZodError } from "zod";
 
 import { loadConfig, type ApiConfig } from "./config.js";
 import { CloudOpsError } from "./errors.js";
+import { EntraAuth } from "./auth/entra-auth.js";
+import {
+  EntraTokenValidator,
+  MicrosoftOrganizationsKeyProvider,
+  type ApiTokenValidator,
+} from "./auth/token-validator.js";
+import {
+  MsalOboService,
+  type GraphTokenBroker,
+} from "./auth/obo-service.js";
 import { registerAssessmentRoutes } from "./routes/assessments.js";
 import { registerExecutionRoutes } from "./routes/executions.js";
 import { registerHealthRoute } from "./routes/health.js";
@@ -29,7 +39,11 @@ export interface BuildAppOptions {
   readonly registry?: AssessmentRegistry;
   readonly runtime?: AssessmentRuntime;
   readonly executionManager?: ExecutionManager;
+  readonly tokenValidator?: ApiTokenValidator;
+  readonly graphTokenBroker?: GraphTokenBroker;
 }
+
+const INTERNAL_AUTH_CONTEXT_ALLOWANCE_BYTES = 68 * 1_024;
 
 function mergedConfig(overrides: Partial<ApiConfig> | undefined): ApiConfig {
   return { ...loadConfig(), ...overrides };
@@ -80,17 +94,16 @@ export async function buildApp(
     crossOriginResourcePolicy: { policy: "same-site" },
   });
 
-  if (config.nodeEnv === "development") {
-    await app.register(cors, {
-      origin: (origin, callback) => {
-        callback(null, origin === undefined || origin === config.webOrigin);
-      },
-      methods: ["GET", "POST", "DELETE", "OPTIONS"],
-      allowedHeaders: ["content-type"],
-      credentials: false,
-      maxAge: 600,
-    });
-  }
+  await app.register(cors, {
+    origin: (origin, callback) => {
+      callback(null, origin === undefined || origin === config.webOrigin);
+    },
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["authorization", "content-type"],
+    exposedHeaders: ["www-authenticate"],
+    credentials: false,
+    maxAge: 600,
+  });
 
   app.addHook("onSend", async (request, reply, payload) => {
     if (
@@ -109,9 +122,29 @@ export async function buildApp(
     new PowerShellRuntime({
       executable: config.powershellExecutable,
       maxArtifactBytes: config.maxArtifactBytes,
-      maxContextBytes: config.bodyLimitBytes,
+      // The internal context also carries a bounded delegated Graph token and
+      // server-owned identifiers that are not part of the public body limit.
+      maxContextBytes:
+        config.bodyLimitBytes + INTERNAL_AUTH_CONTEXT_ALLOWANCE_BYTES,
       healthCacheMs: config.powershellHealthCacheMs,
     });
+  const tokenValidator =
+    options.tokenValidator ??
+    new EntraTokenValidator({
+      audience: config.entraApiClientId,
+      keyProvider: new MicrosoftOrganizationsKeyProvider(),
+    });
+  const auth = new EntraAuth(tokenValidator);
+  auth.register(app);
+
+  const graphTokenBroker =
+    options.graphTokenBroker ??
+    (options.executionManager
+      ? undefined
+      : new MsalOboService({
+          clientId: config.entraApiClientId,
+          clientSecret: config.entraApiClientSecret,
+        }));
   const executionManager =
     options.executionManager ??
     new ExecutionManager({
@@ -119,14 +152,16 @@ export async function buildApp(
       runtime,
       artifactTtlMs: config.artifactTtlMs,
       maxConcurrentExecutions: config.maxConcurrentExecutions,
+      graphTokenTimeoutMs: config.oboTimeoutMs,
+      ...(graphTokenBroker ? { graphTokenBroker } : {}),
       onLifecycleEvent: (event) => {
         app.log.info(event, "Execution lifecycle event");
       },
     });
 
   registerHealthRoute(app, runtime);
-  registerAssessmentRoutes(app, registry, executionManager);
-  registerExecutionRoutes(app, executionManager);
+  registerAssessmentRoutes(app, registry, executionManager, auth);
+  registerExecutionRoutes(app, executionManager, auth);
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send({
@@ -146,6 +181,9 @@ export async function buildApp(
       statusCode = error.statusCode;
       code = error.code;
       message = error.message;
+      if (error.authenticateHeader) {
+        reply.header("WWW-Authenticate", error.authenticateHeader);
+      }
     } else if (errorCode(error) === "FST_ERR_CTP_BODY_TOO_LARGE") {
       statusCode = 413;
       code = "PAYLOAD_TOO_LARGE";

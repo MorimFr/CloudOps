@@ -12,7 +12,7 @@ Entrada JSON em `stdin`:
 }
 ```
 
-Durante a execução, `stderr` recebe somente eventos NDJSON de progresso e resumo. `stdout` recebe somente um ZIP binário, construído com `MemoryStream` e `ZipArchive`, contendo `report.html` e `summary.json`. O assessment não cria arquivo temporário ou relatório no filesystem.
+Durante a execução, `stderr` recebe somente eventos NDJSON de progresso e `publicMetrics` estritamente agregadas. `stdout` recebe somente um ZIP binário, construído com `MemoryStream` e `ZipArchive`, contendo `report.html` e `summary.json`. O assessment não cria arquivo temporário ou relatório no filesystem.
 
 Para validar diretamente com PowerShell 7:
 

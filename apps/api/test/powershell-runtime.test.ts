@@ -37,6 +37,12 @@ const assessment: RegisteredAssessment = {
   id: "hello-world",
   name: "Hello World Assessment",
   enabled: true,
+  provider: "azure",
+  domain: "devops",
+  visibility: "development",
+  requiredAuthProvider: "none",
+  requiredPermissions: [],
+  adminConsentRequired: false,
   scriptPath: path.resolve("engine/hello-world/Invoke-Assessment.ps1"),
   timeoutMs: 250,
 };
@@ -71,7 +77,7 @@ describe("PowerShellRuntime", () => {
             '{"type":"progress","stage":"PROCESSING","progress":50}\n',
           );
           child.stderr.write(
-            '{"type":"summary","summary":{"message":"done"}}\n',
+            '{"type":"publicMetrics","publicMetrics":{"findings":1,"objectsAnalyzed":2}}\n',
           );
           child.stdout.write(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
           child.exitCode = 0;
@@ -110,7 +116,67 @@ describe("PowerShellRuntime", () => {
     expect(stdin).toContain('"assessmentId":"hello-world"');
     expect(onProgress).toHaveBeenCalledWith("PROCESSING", 50);
     expect(result.artifact).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
-    expect(result.summary).toEqual({ message: "done" });
+    expect(result.publicMetrics).toEqual({ findings: 1, objectsAnalyzed: 2 });
+  });
+
+  it("passes Graph auth only through stdin and never through child environment", async () => {
+    const child = new FakeChild();
+    const graphToken = "graph-token-only-for-stdin";
+    let stdin = "";
+    let environment: NodeJS.ProcessEnv | undefined;
+    child.stdin.on("data", (chunk: Buffer) => {
+      stdin += chunk.toString("utf8");
+    });
+    const runtime = new PowerShellRuntime({
+      environment: {
+        PATH: "safe-path",
+        CLOUDOPS_ENTRA_API_CLIENT_SECRET: "must-not-pass",
+        GRAPH_TOKEN: "must-not-pass",
+      },
+      spawnProcess: (_command, _args, options) => {
+        environment = options.env;
+        queueMicrotask(() => {
+          child.emit("spawn");
+          child.stdout.write(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+          child.exitCode = 0;
+          child.emit("close", 0, null);
+        });
+        return asChild(child);
+      },
+    });
+
+    await runtime.execute({
+      assessment: {
+        ...assessment,
+        requiredAuthProvider: "microsoft-graph",
+        requiredPermissions: ["User.Read"],
+        visibility: "public",
+        domain: "secops",
+      },
+      context: {
+        executionId: "EXE-f5ba1dac-d546-47a7-b9e5-7ef9ad22cfb3",
+        assessmentId: "hello-world",
+        options: {},
+        auth: {
+          provider: "microsoft-graph",
+          tenantId: "22222222-2222-4222-8222-222222222222",
+          accessToken: graphToken,
+        },
+      },
+      signal: new AbortController().signal,
+      onStarted: vi.fn(),
+      onProgress: vi.fn(),
+    });
+
+    expect(stdin).toContain(graphToken);
+    expect(JSON.stringify(environment)).not.toContain(graphToken);
+    expect(environment).not.toHaveProperty("GRAPH_TOKEN");
+    expect(environment).not.toHaveProperty("CLOUDOPS_ENTRA_API_CLIENT_SECRET");
+    expect(environment).toMatchObject({
+      PATH: "safe-path",
+      POWERSHELL_UPDATECHECK: "Off",
+      POWERSHELL_TELEMETRY_OPTOUT: "1",
+    });
   });
 
   it("fails safely on invalid stderr without reflecting its content", async () => {
@@ -213,6 +279,120 @@ describe("PowerShellRuntime", () => {
       message: "The PowerShell assessment runtime failed safely.",
     });
     expect(child.killed).toBe(true);
+  });
+
+  it("propagates only an allowlisted Graph failure code", async () => {
+    const child = new FakeChild();
+    const runtime = new PowerShellRuntime({
+      spawnProcess: () => {
+        queueMicrotask(() => {
+          child.emit("spawn");
+          child.stderr.write(
+            '{"type":"error","code":"GRAPH_THROTTLED","message":"Safe failure."}\n',
+          );
+        });
+        return asChild(child);
+      },
+    });
+
+    await expect(
+      runtime.execute({
+        assessment,
+        context: {
+          executionId: "EXE-f5ba1dac-d546-47a7-b9e5-7ef9ad22cfb3",
+          assessmentId: "hello-world",
+          options: {},
+        },
+        signal: new AbortController().signal,
+        onStarted: vi.fn(),
+        onProgress: vi.fn(),
+      }),
+    ).rejects.toMatchObject({ code: "GRAPH_THROTTLED" });
+  });
+
+  it("rejects public metrics containing PII or arbitrary keys", async () => {
+    const child = new FakeChild();
+    const runtime = new PowerShellRuntime({
+      spawnProcess: () => {
+        queueMicrotask(() => {
+          child.emit("spawn");
+          child.stderr.write(
+            '{"type":"publicMetrics","publicMetrics":{"userPrincipalName":"person@example.com"}}\n',
+          );
+        });
+        return asChild(child);
+      },
+    });
+
+    await expect(
+      runtime.execute({
+        assessment,
+        context: {
+          executionId: "EXE-f5ba1dac-d546-47a7-b9e5-7ef9ad22cfb3",
+          assessmentId: "hello-world",
+          options: {},
+        },
+        signal: new AbortController().signal,
+        onStarted: vi.fn(),
+        onProgress: vi.fn(),
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_CONTROL_OUTPUT" });
+  });
+
+  it("enforces the artifact byte limit and wipes all received chunks", async () => {
+    const child = new FakeChild();
+    const first = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+    const overflow = Buffer.from("overflow");
+    const runtime = new PowerShellRuntime({
+      maxArtifactBytes: first.length,
+      spawnProcess: () => {
+        queueMicrotask(() => {
+          child.emit("spawn");
+          child.stdout.write(first);
+          child.stdout.write(overflow);
+        });
+        return asChild(child);
+      },
+    });
+
+    await expect(
+      runtime.execute({
+        assessment,
+        context: {
+          executionId: "EXE-f5ba1dac-d546-47a7-b9e5-7ef9ad22cfb3",
+          assessmentId: "hello-world",
+          options: {},
+        },
+        signal: new AbortController().signal,
+        onStarted: vi.fn(),
+        onProgress: vi.fn(),
+      }),
+    ).rejects.toMatchObject({ code: "ARTIFACT_TOO_LARGE" });
+    expect(first.every((byte) => byte === 0)).toBe(true);
+    expect(overflow.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it("normalizes synchronous spawn failures without exposing context", async () => {
+    const runtime = new PowerShellRuntime({
+      spawnProcess: () => {
+        throw new Error("spawn failed with graph-token-secret");
+      },
+    });
+
+    const error = await runtime.execute({
+      assessment,
+      context: {
+        executionId: "EXE-f5ba1dac-d546-47a7-b9e5-7ef9ad22cfb3",
+        assessmentId: "hello-world",
+        options: { access: "context-value" },
+      },
+      signal: new AbortController().signal,
+      onStarted: vi.fn(),
+      onProgress: vi.fn(),
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({ code: "POWERSHELL_UNAVAILABLE" });
+    expect((error as Error).message).not.toContain("graph-token-secret");
   });
 
   it("kills the child when the assessment timeout is exceeded", async () => {

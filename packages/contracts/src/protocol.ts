@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PublicMetricsSchema } from "./execution.js";
+
 export const ProgressControlEventSchema = z
   .object({
     type: z.literal("progress"),
@@ -12,28 +14,38 @@ export const ProgressControlEventSchema = z
   })
   .strict();
 
-export const SummaryControlEventSchema = z
+export const PublicMetricsControlEventSchema = z
   .object({
-    type: z.literal("summary"),
-    summary: z.record(z.string(), z.unknown()),
+    type: z.literal("publicMetrics"),
+    publicMetrics: PublicMetricsSchema,
   })
   .strict();
+
+export const ASSESSMENT_FAILURE_CODES = [
+  "ASSESSMENT_FAILED",
+  "GRAPH_CONSENT_REQUIRED",
+  "GRAPH_INSUFFICIENT_PRIVILEGES",
+  "GRAPH_AUTHENTICATION_FAILED",
+  "GRAPH_THROTTLED",
+  "GRAPH_UNAVAILABLE",
+] as const;
+
+export const AssessmentFailureCodeSchema = z.enum(ASSESSMENT_FAILURE_CODES);
+export type AssessmentFailureCode = z.infer<
+  typeof AssessmentFailureCodeSchema
+>;
 
 export const ErrorControlEventSchema = z
   .object({
     type: z.literal("error"),
-    code: z
-      .string()
-      .min(1)
-      .max(64)
-      .regex(/^[A-Z][A-Z0-9_]*$/),
+    code: AssessmentFailureCodeSchema,
     message: z.string().min(1).max(300),
   })
   .strict();
 
 export const PowerShellControlEventSchema = z.discriminatedUnion("type", [
   ProgressControlEventSchema,
-  SummaryControlEventSchema,
+  PublicMetricsControlEventSchema,
   ErrorControlEventSchema,
 ]);
 
