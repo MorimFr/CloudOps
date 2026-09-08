@@ -28,6 +28,11 @@ export function ProviderSidebar({ provider, auth }: ProviderSidebarProps) {
         <span>CloudOps</span>
       </NavLink>
 
+      <div className="sidebar-provider-card">
+        <span className="provider-monogram" aria-hidden="true">{provider.monogram}</span>
+        <div><small>Cloud workspace</small><strong>{provider.shortName}</strong></div>
+      </div>
+
       <label className="provider-select-label" htmlFor="provider-select">
         Ambiente cloud
       </label>

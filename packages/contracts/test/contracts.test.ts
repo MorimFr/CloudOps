@@ -3,6 +3,8 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   AssessmentExecutionRequestSchema,
   AssessmentSummarySchema,
+  AssessmentCatalogSchema,
+  classifyIdentityFailure,
   ASSESSMENT_AUTH_PROVIDERS,
   ASSESSMENT_VISIBILITIES,
   CLOUD_PROVIDERS,
@@ -17,6 +19,32 @@ import {
 } from "../src/index.js";
 
 describe("shared contracts", () => {
+  it("rejects duplicate assessments and inconsistent centralized module metadata", () => {
+    const item = {
+      id: "synthetic-diagnostic", name: "Diagnostic", enabled: true,
+      provider: "azure", domain: "secops", visibility: "public",
+      moduleId: "diagnostics", moduleName: "Diagnostics", moduleDescription: "Technical checks.",
+      moduleOrder: 1, assessmentOrder: 1, requiredAuthProvider: "none",
+      requiredPermissions: [], adminConsentRequired: false,
+    };
+    expect(AssessmentCatalogSchema.safeParse([item]).success).toBe(true);
+    expect(AssessmentCatalogSchema.safeParse([item, item]).success).toBe(false);
+    for (const change of [{ moduleName: "Different" }, { moduleOrder: 2 }, { domain: "devops" }]) {
+      expect(AssessmentCatalogSchema.safeParse([item, { ...item, id: "another-diagnostic", ...change }]).success).toBe(false);
+    }
+  });
+
+  it("classifies only known identity signals without exposing upstream details", () => {
+    expect(classifyIdentityFailure({ errorMessage: "AADSTS90094: private upstream details" })).toBe("admin");
+    expect(classifyIdentityFailure({ error_codes: [90095] })).toBe("admin");
+    expect(classifyIdentityFailure({ errorNo: "65001" })).toBe("consent");
+    expect(classifyIdentityFailure({ errorCode: "user_cancelled" })).toBe("cancelled");
+    expect(classifyIdentityFailure({ errorCodes: [65004] })).toBe("cancelled");
+    expect(classifyIdentityFailure({ errorCode: "interaction_required" })).toBe("interaction");
+    expect(classifyIdentityFailure({ message: "Unknown admin policy failure" })).toBeUndefined();
+    expect(classifyIdentityFailure(null)).toBeUndefined();
+  });
+
   it("exposes exactly the supported execution statuses", () => {
     expect(EXECUTION_STATUSES).toEqual([
       "CREATED",
@@ -81,7 +109,7 @@ describe("shared contracts", () => {
     ]);
     expect(ASSESSMENT_VISIBILITIES).toEqual(["public", "development"]);
     expect(ASSESSMENT_AUTH_PROVIDERS).toEqual(["none", "microsoft-graph"]);
-    expect(GRAPH_PERMISSIONS).toEqual(["User.Read"]);
+    expect(GRAPH_PERMISSIONS).toEqual(["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"]);
 
     expect(
       AssessmentSummarySchema.parse({
@@ -90,6 +118,11 @@ describe("shared contracts", () => {
         enabled: true,
         provider: "azure",
         domain: "secops",
+        moduleId: "connectivity-diagnostics",
+        moduleName: "Conectividade e diagnóstico",
+        moduleDescription: "Validação técnica.",
+        moduleOrder: 4,
+        assessmentOrder: 1,
         visibility: "public",
         requiredAuthProvider: "microsoft-graph",
         requiredPermissions: ["User.Read"],

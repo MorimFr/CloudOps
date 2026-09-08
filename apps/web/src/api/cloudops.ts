@@ -1,5 +1,5 @@
 import {
-  AssessmentSummarySchema,
+  AssessmentCatalogSchema,
   CreateExecutionResponseSchema,
   ExecutionSchema,
   type AssessmentExecutionRequest,
@@ -57,6 +57,11 @@ export class CloudOpsApiError extends Error {
     this.code = code;
     this.status = status;
   }
+}
+
+/** Shared by claims-challenge and consent recovery for one logical creation. */
+export interface AuthenticationRetryBudget {
+  remaining: 0 | 1;
 }
 
 async function toApiError(response: Response): Promise<CloudOpsApiError> {
@@ -229,6 +234,7 @@ async function requestAuthorized(
   path: string,
   init: RequestInit,
   tokenProvider: ApiAccessTokenProvider,
+  retryBudget: AuthenticationRetryBudget = { remaining: 1 },
 ): Promise<Response> {
   const accessToken = await tokenProvider();
   let response = await sendAuthorized(path, init, accessToken);
@@ -237,7 +243,8 @@ async function requestAuthorized(
     const challenge = parseMicrosoftInteractionChallenge(
       response.headers.get("WWW-Authenticate"),
     );
-    if (challenge) {
+    if (challenge && retryBudget.remaining > 0) {
+      retryBudget.remaining = 0;
       const challengedToken = await tokenProvider({
         ...(challenge.claims ? { claims: challenge.claims } : {}),
         forceRefresh: true,
@@ -254,8 +261,9 @@ async function requestJson<T>(
   path: string,
   init: RequestInit,
   tokenProvider: ApiAccessTokenProvider,
+  retryBudget?: AuthenticationRetryBudget,
 ): Promise<T> {
-  const response = await requestAuthorized(path, init, tokenProvider);
+  const response = await requestAuthorized(path, init, tokenProvider, retryBudget);
   if (!response.ok) {
     throw await toApiError(response);
   }
@@ -266,13 +274,14 @@ export function listAssessments(
   tokenProvider: ApiAccessTokenProvider,
 ): Promise<AssessmentSummary[]> {
   return requestJson<unknown>("/api/v1/assessments", {}, tokenProvider).then(
-    (payload) => AssessmentSummarySchema.array().parse(payload),
+    (payload) => AssessmentCatalogSchema.parse(payload),
   );
 }
 
 export function createExecution(
   request: AssessmentExecutionRequest,
   tokenProvider: ApiAccessTokenProvider,
+  retryBudget?: AuthenticationRetryBudget,
 ): Promise<CreateExecutionResponse> {
   return requestJson<unknown>(
     `/api/v1/assessments/${encodeURIComponent(request.assessmentId)}/executions`,
@@ -282,6 +291,7 @@ export function createExecution(
       body: JSON.stringify({ options: request.options }),
     },
     tokenProvider,
+    retryBudget,
   ).then((payload) => CreateExecutionResponseSchema.parse(payload));
 }
 

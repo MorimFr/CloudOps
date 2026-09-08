@@ -36,6 +36,8 @@ function registration() {
     timeoutMs: 30_000,
     provider: "azure" as const,
     domain: "devops" as const,
+    moduleId: "runtime-validation",
+    assessmentOrder: 1,
     visibility: "development" as const,
     requiredAuthProvider: "none" as const,
     requiredPermissions: [] as const,
@@ -58,6 +60,7 @@ function graphRegistry(): AssessmentRegistry {
         "Invoke-Assessment.ps1",
       ),
       domain: "secops",
+      moduleId: "connectivity-diagnostics",
       visibility: "public",
       requiredAuthProvider: "microsoft-graph",
       requiredPermissions: ["User.Read"],
@@ -117,6 +120,29 @@ afterEach(async () => {
 });
 
 describe("CloudOps API", () => {
+  it("launches the registered inactive-user tool with tenant-bound scopes and one-time download", async () => {
+    const assessmentRegistry = new AssessmentRegistry(path.resolve("engine"));
+    const { app, manager, runtime } = await testApp({ assessmentRegistry, graphTokenBroker: {
+      async acquireToken(request) {
+        expect(request.tenantId).toBe(authenticatedA.principal.tenantId);
+        expect(request.requiredPermissions).toEqual(["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"]);
+        return { accessToken: "synthetic-graph-inventory-token" };
+      },
+    } });
+    const catalog = await app.inject({ method: "GET", url: "/api/v1/assessments", headers: authorization() });
+    expect(catalog.json()).toEqual(expect.arrayContaining([expect.objectContaining({ id: "inactive-users", moduleId: "identity-visibility", adminConsentRequired: true })]));
+    const response = await app.inject({ method: "POST", url: "/api/v1/assessments/inactive-users/executions", headers: authorization(), payload: { options: {} } });
+    expect(response.statusCode).toBe(202);
+    const { executionId } = response.json<{ executionId: string }>();
+    await waitForCondition(() => manager.get(executionId, authenticatedA.principal.ownerKey)?.status === "COMPLETED");
+    expect(runtime.calls[0]?.assessment.timeoutMs).toBe(55 * 60_000);
+    expect(runtime.calls[0]?.context.auth).toMatchObject({ provider: "microsoft-graph", accessToken: "synthetic-graph-inventory-token" });
+    const status = await app.inject({ method: "GET", url: `/api/v1/executions/${executionId}`, headers: authorization() });
+    expect(status.body).not.toContain("synthetic-graph-inventory-token");
+    expect((await app.inject({ method: "GET", url: `/api/v1/executions/${executionId}/artifact`, headers: authorization(tokenB) })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: `/api/v1/executions/${executionId}/artifact`, headers: authorization() })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: `/api/v1/executions/${executionId}/artifact`, headers: authorization() })).statusCode).toBe(410);
+  });
   it("keeps health public and protects every other API route", async () => {
     const { app } = await testApp();
 
@@ -154,6 +180,11 @@ describe("CloudOps API", () => {
         enabled: true,
         provider: "azure",
         domain: "devops",
+        moduleId: "runtime-validation",
+        moduleName: "Validação de runtime",
+        moduleDescription: "Testes de desenvolvimento do pipeline efêmero de execução e relatórios.",
+        moduleOrder: 1,
+        assessmentOrder: 1,
         visibility: "development",
         requiredAuthProvider: "none",
         requiredPermissions: [],
@@ -193,6 +224,8 @@ describe("CloudOps API", () => {
   it("maps invalid JWT claims and missing delegated scope at the HTTP boundary", async () => {
     const { app } = await testApp();
     const cases = [
+      { token: await authHarness.issueToken({ authorizedParty: TEST_TENANT_B }), statusCode: 401, code: "INVALID_API_TOKEN" },
+      { token: await authHarness.issueToken({ authorizedParty: null }), statusCode: 401, code: "INVALID_API_TOKEN" },
       {
         token: await authHarness.issueToken({
           audience: "00000003-0000-0000-c000-000000000000",

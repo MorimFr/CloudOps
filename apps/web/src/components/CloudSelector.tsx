@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import { CLOUD_PROVIDERS } from "../config/providers";
+import { CLOUD_PROVIDERS, providerThemeStyle } from "../config/providers";
 
 export function CloudSelector() {
   const navigate = useNavigate();
@@ -50,8 +50,8 @@ export function CloudSelector() {
 
           <div className="provider-grid">
             {CLOUD_PROVIDERS.map((provider) => (
-              <article className="provider-card" key={provider.id}>
-                <div className={`provider-monogram provider-${provider.id}`}>
+              <article className="provider-card" key={provider.id} style={providerThemeStyle(provider)}>
+                <div className="provider-monogram">
                   {provider.monogram}
                 </div>
                 <div className="provider-copy">

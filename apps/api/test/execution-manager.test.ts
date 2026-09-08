@@ -42,6 +42,8 @@ function registration() {
     timeoutMs: 30_000,
     provider: "azure" as const,
     domain: "devops" as const,
+    moduleId: "runtime-validation",
+    assessmentOrder: 1,
     visibility: "development" as const,
     requiredAuthProvider: "none" as const,
     requiredPermissions: [] as const,
@@ -64,6 +66,7 @@ function graphRegistry(): AssessmentRegistry {
         "Invoke-Assessment.ps1",
       ),
       domain: "secops",
+      moduleId: "connectivity-diagnostics",
       visibility: "public",
       requiredAuthProvider: "microsoft-graph",
       requiredPermissions: ["User.Read"],
@@ -86,6 +89,36 @@ afterEach(() => {
 });
 
 describe("ExecutionManager", () => {
+  it("reserves the long-inventory slot across tenants before awaiting OBO", async () => {
+    const manager = track(new ExecutionManager({
+      registry: new AssessmentRegistry(path.resolve("engine")),
+      runtime: { isAvailable: async () => true, execute: () => new Promise(() => undefined) },
+      graphTokenBroker: { acquireToken: async () => ({ accessToken: "synthetic-graph-token" }) },
+    }));
+    await manager.create({ assessmentId: "inactive-users", options: {} }, authenticatedA);
+    await expect(manager.create({ assessmentId: "inactive-users", options: {} }, authenticatedB)).rejects.toMatchObject({ code: "EXECUTION_CAPACITY_REACHED" });
+    // Diagnostic assessments keep their own concurrency behavior.
+    await expect(manager.create({ assessmentId: "hello-world", options: {} }, authenticatedB)).resolves.toMatchObject({ status: "STARTING" });
+  });
+  it("exposes only validated live aggregates and discards them on failed scans", async () => {
+    let input: RuntimeExecutionInput | undefined;
+    let fail: (error: Error) => void = () => undefined;
+    const runtime: AssessmentRuntime = {
+      isAvailable: async () => true,
+      execute: (request) => { input = request; request.onStarted(); return new Promise((_resolve, reject) => { fail = reject; }); },
+    };
+    const manager = track(new ExecutionManager({ registry: registry(), runtime }));
+    const created = await manager.create({ assessmentId: "hello-world", options: {} }, authenticatedA);
+    await waitForCondition(() => input !== undefined);
+    const metrics = { findings: 250, objectsAnalyzed: 500, requestsCompleted: 3 };
+    input?.onPublicMetrics?.(metrics);
+    metrics.findings = 999;
+    expect(manager.get(created.executionId, authenticatedA.principal.ownerKey)?.publicMetrics).toEqual({ findings: 250, objectsAnalyzed: 500, requestsCompleted: 3 });
+    expect(() => input?.onPublicMetrics?.({ objectsAnalyzed: -1 })).toThrow();
+    fail(new Error("synthetic failure"));
+    await waitForCondition(() => manager.get(created.executionId, authenticatedA.principal.ownerKey)?.status === "FAILED");
+    expect(manager.get(created.executionId, authenticatedA.principal.ownerKey)?.publicMetrics).toBeUndefined();
+  });
   it("generates non-predictable unique execution IDs", async () => {
     const manager = track(new ExecutionManager({
       registry: registry(),

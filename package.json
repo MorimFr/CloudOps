@@ -17,10 +17,13 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "node scripts/validate-e2e.mjs",
+    "test:ui": "playwright test",
+    "test:reports": "playwright test --config playwright.reports.config.ts",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.3.0",
     "concurrently": "^9.2.1",

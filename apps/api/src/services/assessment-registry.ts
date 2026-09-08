@@ -14,6 +14,7 @@ import {
 } from "@cloudops/contracts";
 
 import { errors } from "../errors.js";
+import { ModuleRegistry } from "./module-registry.js";
 
 export interface AssessmentRegistration {
   readonly id: AssessmentId;
@@ -22,8 +23,11 @@ export interface AssessmentRegistration {
   readonly scriptRelativePath: string;
   readonly enabled: boolean;
   readonly timeoutMs: number;
+  readonly maxConcurrentExecutions?: number;
   readonly provider: CloudProvider;
   readonly domain: OperationalDomain;
+  readonly moduleId: string;
+  readonly assessmentOrder: number;
   readonly visibility: AssessmentVisibility;
   readonly requiredAuthProvider: AssessmentAuthProvider;
   readonly requiredPermissions: readonly GraphPermission[];
@@ -33,9 +37,29 @@ export interface AssessmentRegistration {
 export interface RegisteredAssessment extends AssessmentSummary {
   readonly scriptPath: string;
   readonly timeoutMs: number;
+  readonly maxConcurrentExecutions?: number;
 }
 
 const DEFAULT_REGISTRATIONS: readonly AssessmentRegistration[] = [
+  {
+    id: "inactive-users",
+    name: "Mapear Usuários Inativos",
+    description: "Identifica contas sem login bem-sucedido há pelo menos 90 dias. Gera relatório executivo HTML e CSV de inativos; contas novas sem login aguardam 90 dias desde a criação.",
+    scriptRelativePath: path.join("inactive-users", "Invoke-Assessment.ps1"),
+    enabled: true,
+    // signInActivity is limited to 500 users/page and 10 requests/minute.
+    // Bound long scans below one hour; authentication can still expire earlier.
+    timeoutMs: 55 * 60_000,
+    maxConcurrentExecutions: 1,
+    provider: "azure",
+    domain: "secops",
+    moduleId: "identity-visibility",
+    assessmentOrder: 1,
+    visibility: "public",
+    requiredAuthProvider: "microsoft-graph",
+    requiredPermissions: ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"],
+    adminConsentRequired: true,
+  },
   {
     id: "hello-world",
     name: "Hello World Assessment",
@@ -49,6 +73,8 @@ const DEFAULT_REGISTRATIONS: readonly AssessmentRegistration[] = [
     timeoutMs: 30_000,
     provider: "azure",
     domain: "devops",
+    moduleId: "runtime-validation",
+    assessmentOrder: 1,
     visibility: "development",
     requiredAuthProvider: "none",
     requiredPermissions: [],
@@ -67,6 +93,8 @@ const DEFAULT_REGISTRATIONS: readonly AssessmentRegistration[] = [
     timeoutMs: 60_000,
     provider: "azure",
     domain: "secops",
+    moduleId: "connectivity-diagnostics",
+    assessmentOrder: 1,
     visibility: "public",
     requiredAuthProvider: "microsoft-graph",
     requiredPermissions: ["User.Read"],
@@ -115,6 +143,7 @@ export class AssessmentRegistry {
   public constructor(
     engineRoot: string,
     registrations: readonly AssessmentRegistration[] = DEFAULT_REGISTRATIONS,
+    modules: ModuleRegistry = new ModuleRegistry(),
   ) {
     if (registrations.length === 0) {
       throw new Error("At least one assessment must be registered");
@@ -129,11 +158,19 @@ export class AssessmentRegistry {
       if (
         !Number.isSafeInteger(registration.timeoutMs) ||
         registration.timeoutMs < 100 ||
-        registration.timeoutMs > 15 * 60_000
+        registration.timeoutMs > 55 * 60_000
       ) {
         throw new Error("Assessment timeout is outside the allowed range");
       }
+      if (registration.maxConcurrentExecutions !== undefined &&
+        (!Number.isSafeInteger(registration.maxConcurrentExecutions) || registration.maxConcurrentExecutions < 1 || registration.maxConcurrentExecutions > 100)) {
+        throw new Error("Assessment concurrency is outside the allowed range");
+      }
 
+      const module = modules.resolve(registration.moduleId);
+      if (module.provider !== registration.provider || module.domain !== registration.domain) {
+        throw new Error("Assessment module does not belong to its provider/domain");
+      }
       const publicAssessment = AssessmentSummarySchema.parse({
         id,
         name: registration.name,
@@ -143,6 +180,11 @@ export class AssessmentRegistry {
         enabled: registration.enabled,
         provider: registration.provider,
         domain: registration.domain,
+        moduleId: module.id,
+        moduleName: module.name,
+        moduleDescription: module.description,
+        moduleOrder: module.order,
+        assessmentOrder: registration.assessmentOrder,
         visibility: registration.visibility,
         requiredAuthProvider: registration.requiredAuthProvider,
         requiredPermissions: [...registration.requiredPermissions],
@@ -166,6 +208,7 @@ export class AssessmentRegistry {
           registration.scriptRelativePath,
         ),
         timeoutMs: registration.timeoutMs,
+        ...(registration.maxConcurrentExecutions !== undefined ? { maxConcurrentExecutions: registration.maxConcurrentExecutions } : {}),
       }));
     }
   }
@@ -180,6 +223,11 @@ export class AssessmentRegistry {
       enabled: assessment.enabled,
       provider: assessment.provider,
       domain: assessment.domain,
+      moduleId: assessment.moduleId,
+      moduleName: assessment.moduleName,
+      moduleDescription: assessment.moduleDescription,
+      moduleOrder: assessment.moduleOrder,
+      assessmentOrder: assessment.assessmentOrder,
       visibility: assessment.visibility,
       requiredAuthProvider: assessment.requiredAuthProvider,
       requiredPermissions: Object.freeze([

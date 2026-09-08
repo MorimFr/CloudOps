@@ -122,6 +122,12 @@ export const errors = {
       "The tenant has not granted a permission required by this assessment.",
       403,
     ),
+  adminApprovalRequired: () =>
+    new CloudOpsError(
+      "ADMIN_APPROVAL_REQUIRED",
+      "The tenant requires administrator approval for the requested permissions.",
+      403,
+    ),
   graphAuthenticationFailed: () =>
     new CloudOpsError(
       "GRAPH_AUTHENTICATION_FAILED",

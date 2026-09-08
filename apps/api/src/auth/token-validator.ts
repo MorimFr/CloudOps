@@ -293,6 +293,7 @@ export class MicrosoftOrganizationsKeyProvider
 
 export interface EntraTokenValidatorOptions {
   readonly audience: string;
+  readonly authorizedParty: string;
   readonly keyProvider: SigningKeyProvider;
   readonly maximumTokenBytes?: number;
   readonly clockToleranceSeconds?: number;
@@ -300,6 +301,7 @@ export interface EntraTokenValidatorOptions {
 
 export class EntraTokenValidator implements ApiTokenValidator {
   readonly #audience: string;
+  readonly #authorizedParty: string;
   readonly #keyProvider: SigningKeyProvider;
   readonly #maximumTokenBytes: number;
   readonly #clockToleranceSeconds: number;
@@ -309,6 +311,10 @@ export class EntraTokenValidator implements ApiTokenValidator {
       throw new Error("CloudOps API audience must be a client ID GUID");
     }
     this.#audience = options.audience.toLowerCase();
+    if (!isGuid(options.authorizedParty) || options.authorizedParty.toLowerCase() === this.#audience) {
+      throw new Error("CloudOps Web authorized party must be a distinct client ID GUID");
+    }
+    this.#authorizedParty = options.authorizedParty.toLowerCase();
     this.#keyProvider = options.keyProvider;
     this.#maximumTokenBytes =
       options.maximumTokenBytes ?? DEFAULT_MAX_TOKEN_BYTES;
@@ -348,6 +354,8 @@ export class EntraTokenValidator implements ApiTokenValidator {
     if (
       payload.aud !== this.#audience ||
       payload.ver !== "2.0" ||
+      !isGuid(payload.azp) ||
+      payload.azp.toLowerCase() !== this.#authorizedParty ||
       !isGuid(payload.tid) ||
       !isGuid(payload.oid)
     ) {

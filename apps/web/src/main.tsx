@@ -8,6 +8,7 @@ import {
   readEntraBrowserSettings,
 } from "./auth/msal";
 import "./styles.css";
+import "./catalog.css";
 
 const rootElement = document.getElementById("root");
 

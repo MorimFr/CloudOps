@@ -257,6 +257,24 @@ finally {
     $fixture.Client.Dispose()
 }
 
+# Long Retry-After must not be shortened; excessive values fail without retry.
+foreach ($seconds in @(60, 301)) {
+    $response = New-TestResponse -StatusCode 429
+    $response.Headers.RetryAfter = [System.Net.Http.Headers.RetryConditionHeaderValue]::new([TimeSpan]::FromSeconds($seconds))
+    $fixture = New-TestClient -Responses @($response, (New-TestResponse -StatusCode 200 -Json '{"id":"after-wait"}'))
+    $delays = [System.Collections.Generic.List[int]]::new()
+    try {
+        $parameters = @{ AccessToken = $token; Path = '/users'; HttpClient = $fixture.Client; MaximumRetryAfterSeconds = 300; DelayAction = { param([int] $Milliseconds) $delays.Add($Milliseconds) } }
+        if ($seconds -eq 60) {
+            $null = Invoke-CloudOpsGraphRequest @parameters
+            Assert-Condition ($delays.Count -eq 1 -and $delays[0] -eq 60000) 'A long Retry-After was shortened.'
+        } else {
+            Assert-GraphFailure -ExpectedCode GRAPH_THROTTLED -Action { Invoke-CloudOpsGraphRequest @parameters }
+            Assert-Condition ($fixture.Handler.RequestUris.Count -eq 1 -and $delays.Count -eq 0) 'Excessive Retry-After caused an early retry.'
+        }
+    } finally { $fixture.Client.Dispose() }
+}
+
 $fixture = New-TestClient -Responses @(
     (New-TestResponse -StatusCode 500 -Json '{}'),
     (New-TestResponse -StatusCode 200 -Json '{"id":"after-server-error"}')
@@ -305,6 +323,18 @@ try {
 }
 finally {
     $fixture.Client.Dispose()
+}
+
+foreach ($json in @('{"value":null}', '{"value":{}}', '{"value":[]}')) {
+    $responses = @((New-TestResponse -StatusCode 200 -Json $json))
+    $fixture = New-TestClient -Responses $responses
+    try {
+        if ($json -eq '{"value":[]}') {
+            Assert-Condition (@(Get-CloudOpsGraphCollection -AccessToken $token -Path '/users' -HttpClient $fixture.Client).Count -eq 0) 'Empty terminal page failed.'
+        } else {
+            Assert-GraphFailure -ExpectedCode GRAPH_UNAVAILABLE -Action { Get-CloudOpsGraphCollection -AccessToken $token -Path '/users' -HttpClient $fixture.Client }
+        }
+    } finally { $fixture.Client.Dispose() }
 }
 
 $fixture = New-TestClient -Responses @(

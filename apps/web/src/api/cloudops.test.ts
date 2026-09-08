@@ -21,6 +21,11 @@ const assessment = {
   enabled: true,
   provider: "azure",
   domain: "secops",
+  moduleId: "connectivity-diagnostics",
+  moduleName: "Conectividade e diagnóstico",
+  moduleDescription: "Validação técnica.",
+  moduleOrder: 4,
+  assessmentOrder: 1,
   visibility: "public",
   requiredAuthProvider: "microsoft-graph",
   requiredPermissions: ["User.Read"],
@@ -211,6 +216,17 @@ describe("CloudOps API client", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(getToken).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not add a claims retry after consent already consumed the shared budget", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "AUTH_INTERACTION_REQUIRED", message: "Safe challenge" } }), {
+      status: 401,
+      headers: { "WWW-Authenticate": `Bearer authorization_uri="https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize", error="interaction_required"` },
+    }));
+    const getToken = tokenProvider();
+    await expect(createExecution({ assessmentId: "test", options: {} }, getToken, { remaining: 0 })).rejects.toMatchObject({ code: "AUTH_INTERACTION_REQUIRED" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(getToken).toHaveBeenCalledOnce();
   });
 
   it("performs one interactive retry for a validated interaction challenge without claims", async () => {

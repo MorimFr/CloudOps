@@ -1,0 +1,13 @@
+{
+  "SPE_E3": "Microsoft 365 E3",
+  "SPE_E5": "Microsoft 365 E5",
+  "ENTERPRISEPACK": "Office 365 E3",
+  "ENTERPRISEPREMIUM": "Office 365 E5",
+  "STANDARDPACK": "Office 365 E1",
+  "O365_BUSINESS_PREMIUM": "Microsoft 365 Business Standard",
+  "O365_BUSINESS_ESSENTIALS": "Microsoft 365 Business Basic",
+  "SPB": "Microsoft 365 Business Premium",
+  "AAD_PREMIUM": "Microsoft Entra ID P1",
+  "AAD_PREMIUM_P2": "Microsoft Entra ID P2",
+  "POWER_BI_PRO": "Power BI Pro"
+}

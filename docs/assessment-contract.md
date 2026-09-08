@@ -14,14 +14,21 @@ interface AssessmentSummary {
   enabled: boolean;
   provider: "azure" | "aws" | "gcp";
   domain: "dashboard" | "govops" | "secops" | "finops" | "devops";
+  moduleId: string;
+  moduleName: string;
+  moduleDescription: string;
+  moduleOrder: number;
+  assessmentOrder: number;
   visibility: "public" | "development";
   requiredAuthProvider: "none" | "microsoft-graph";
-  requiredPermissions: readonly "User.Read"[];
+  requiredPermissions: readonly ("User.Read" | "User.Read.All" | "AuditLog.Read.All" | "LicenseAssignment.Read.All")[];
   adminConsentRequired: boolean;
 }
 ```
 
-Script, caminho, timeout e configuração interna não são expostos.
+Script, caminho, timeout, limite de concorrência por ferramenta e configuração interna não são expostos. `inactive-users` tem timeout de 55 minutos e uma execução simultânea por instância; detalhes em [Usuários inativos](inactive-users.md).
+
+O Module Registry centraliza metadados e valida provider/domain. O catálogo exige IDs únicos e campos de módulo consistentes; ordens são inteiros de 1 a 999. Campos novos são obrigatórios: backend e Web devem ser atualizados juntos.
 
 ## Criação
 
@@ -125,5 +132,7 @@ O runtime aplica schema, tamanho e monotonicidade. Texto arbitrário, propriedad
 ## Erros
 
 Erros HTTP usam envelope estrito com código estável e mensagem segura. Stack, resposta Graph, detalhe MSAL, secret, token, claims e ambiente nunca são refletidos.
+
+`GRAPH_CONSENT_REQUIRED` e `ADMIN_APPROVAL_REQUIRED` são tratados antes da execução no painel de consentimento, separado do ExecutionPanel. Tokens v2 sem `azp` correspondente ao Web autorizado recebem `401 INVALID_API_TOKEN`.
 
 Claims challenge é a única informação de auth propagada em header `WWW-Authenticate`; ele é limitado, validado/codificado, não aparece no JSON e nunca é registrado.

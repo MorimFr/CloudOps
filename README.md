@@ -7,9 +7,13 @@ Esta etapa entrega:
 - Cloud Selector para Microsoft Azure, AWS e GCP;
 - shell com Dashboard, GovOps, SecOps, FinOps e DevOps em todas as clouds;
 - autenticação Microsoft Entra para contas de qualquer diretório organizacional;
-- validação criptográfica do access token da CloudOps API;
+- onboarding/reconsentimento combinado, separado do token normal `Assessment.Run`;
+- validação criptográfica do access token da CloudOps API, incluindo `azp` do Web autorizado;
+- catálogo `provider → domain → module → assessment`, cards compactos e temas Azure/AWS/GCP;
+- diálogo de consentimento separado, com repetição única e estado de aprovação administrativa;
 - On-Behalf-Of (OBO) para Microsoft Graph;
 - assessment real `microsoft-graph-connectivity`, com delegated `User.Read`;
+- **Mapear Usuários Inativos**: relatório executivo HTML offline e CSV de inativos, com paginação dimensionada para ambientes de aproximadamente 200 mil usuários;
 - `hello-world` preservado como assessment de desenvolvimento e regressão;
 - ZIP em RAM, download único, TTL e limpeza best-effort de buffers.
 
@@ -47,7 +51,9 @@ Preencha no `.env` os IDs dos apps, o scope da API e o client secret local. Depo
 docker compose up --build
 ```
 
-Abra `http://localhost:5173`, escolha **Microsoft Azure**, faça login e navegue até **SecOps → Microsoft Graph Connectivity**.
+Abra `http://localhost:5173`, escolha **Microsoft Azure**, faça login e navegue até **SecOps → Conectividade e diagnóstico → Microsoft Graph Connectivity**. O drawer de execução aprovado foi preservado.
+
+Para a nova ferramenta, abra **SecOps → Visibilidade de segurança de identidade → Mapear Usuários Inativos**. Configure antes as permissões administrativas de leitura descritas em [Usuários inativos](docs/inactive-users.md). Contas sem sucesso registrado aguardam 90 dias desde a criação; o CSV exclui contas recentes e indeterminadas.
 
 Endpoints locais:
 
@@ -63,12 +69,17 @@ Todas as rotas de catálogo e execução exigem um token destinado à CloudOps A
 VITE_ENTRA_WEB_CLIENT_ID=<CloudOps Web Dev client ID>
 VITE_ENTRA_API_SCOPE=api://<CloudOps API Dev client ID>/Assessment.Run
 CLOUDOPS_ENTRA_API_CLIENT_ID=<CloudOps API Dev client ID>
+CLOUDOPS_ENTRA_WEB_CLIENT_ID=<mesmo client ID do Web acima>
 CLOUDOPS_ENTRA_API_CLIENT_SECRET=<secret apenas para desenvolvimento local>
 ```
 
 Não use um tenant ID fixo. A authority do browser é `organizations`; a API deriva e valida o tenant a partir do token assinado. Toda variável `VITE_*` é pública e jamais deve conter secret.
 
 O `CLOUDOPS_ENTRA_API_CLIENT_SECRET` é aceitável somente no desenvolvimento local. Produção deve usar certificado ou outra credencial de confidential client mais forte.
+
+Migração da autenticação: acrescente `CLOUDOPS_ENTRA_WEB_CLIENT_ID` no `.env` existente, sem sobrescrevê-lo. É configuração backend não secreta e independente de `VITE_*`. Confirme `api.knownClientApplications` e Graph delegado somente na API. A ferramenta de inativos acrescenta `User.Read.All`, `AuditLog.Read.All` e `LicenseAssignment.Read.All` ao `User.Read` existente; exige reconsentimento administrativo, não novas variáveis por tenant.
+
+Login/troca de conta solicitam o consentimento estático combinado; chamadas HTTP continuam adquirindo `Assessment.Run`. Se faltar consentimento, **Conceder permissões** abre o popup Microsoft, renova o token normal e repete a operação uma vez. Políticas administrativas continuam soberanas. Novas permissões estáticas na API podem exigir reconsentimento; veja [Autenticação](docs/authentication.md) e [teste com tenant limpo](docs/entra-setup.md#9-testar-tenant-novo-ou-revogar-consentimento-antigo).
 
 ## Validação
 
@@ -78,6 +89,7 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run test:ui
 ```
 
 Testes do engine no PowerShell 7:
@@ -85,11 +97,13 @@ Testes do engine no PowerShell 7:
 ```powershell
 pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-GraphModule.ps1
 pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-HelloWorld.ps1
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-InactiveUsers.ps1 -ScaleUsers 200000
+npm run test:reports
 ```
 
 O E2E HTTP do Hello World agora também é autenticado. Com os containers ativos, forneça um token válido da CloudOps API usando o prompt protegido descrito em [Desenvolvimento local — Hello World](docs/local-development.md#hello-world). Não cole o token em um comando literal que possa entrar no histórico do shell.
 
-O CI não recebe credenciais: executa testes criptográficos locais de auth/OBO, build da imagem e os testes PowerShell sem rede. O Graph E2E real é deliberadamente manual.
+Os testes visuais usam Edge instalado no Windows; em Linux/macOS, instale Chromium com `npx playwright install chromium`. Usam dados sintéticos, não credenciais; screenshots, traces e vídeo estão desligados por padrão. O CI executa também essas regressões de UI. O Graph E2E real é deliberadamente manual.
 
 ## Zero Retention
 
@@ -115,6 +129,7 @@ packages/contracts/              # schemas HTTP e protocolo interno
 engine/
 |-- shared/CloudOps.Graph.psm1   # Graph REST, retry, paginação e host pinning
 |-- microsoft-graph-connectivity/
+|-- inactive-users/             # inventário incremental, HTML offline e CSV
 |-- hello-world/
 `-- tests/
 docker/runtime.Dockerfile        # Node 24.20.0 + PowerShell 7.6.5
@@ -128,6 +143,7 @@ docs/
 - [Microsoft Entra — configuração exata](docs/entra-setup.md)
 - [Autenticação e OBO](docs/authentication.md)
 - [Microsoft Graph](docs/microsoft-graph.md)
+- [Mapear Usuários Inativos: regras, permissões e escala](docs/inactive-users.md)
 - [Zero Retention](docs/zero-retention.md)
 - [Contrato de assessments](docs/assessment-contract.md)
 - [Desenvolvimento de assessments](docs/assessment-development.md)
@@ -136,4 +152,6 @@ docs/
 
 ## Limitações atuais
 
-AWS e GCP possuem shell/navegação, sem autenticação ou APIs. Não estão implementados Inactive Users, Privileged Role Auditor, Secure Score, Conditional Access Assessment, deployment Azure, Bicep, Key Vault, database, storage ou n8n. O único acesso Graph atual é delegated `User.Read`, usado para validar `/me`.
+AWS e GCP possuem shell/navegação, sem autenticação ou APIs. Não estão implementados Privileged Role Auditor, Secure Score, Conditional Access Assessment, deployment Azure, Bicep, Key Vault, database, storage ou n8n. Graph Connectivity e Mapear Usuários Inativos usam apenas leitura delegated. A coleta de inativos tem timeout de 55 minutos e depende da validade da autenticação; não oferece checkpoint ou retomada persistente.
+
+O caminho Entra → OBO → Graph → ZIP da foundation anterior já foi validado em tenant real pelo usuário. O novo onboarding combinado ainda requer o aceite em tenant de laboratório sem grants prévios; testes sintéticos não substituem essa evidência.

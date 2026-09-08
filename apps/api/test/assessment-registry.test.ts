@@ -17,6 +17,8 @@ const registration: AssessmentRegistration = {
   timeoutMs: 30_000,
   provider: "azure",
   domain: "devops",
+  moduleId: "runtime-validation",
+  assessmentOrder: 1,
   visibility: "development",
   requiredAuthProvider: "none",
   requiredPermissions: [],
@@ -24,12 +26,19 @@ const registration: AssessmentRegistration = {
 };
 
 describe("AssessmentRegistry", () => {
-  it("registers the development hello-world and public Graph assessment", () => {
+  it("registers inactive users with read-only permissions and existing assessments", () => {
     const assessments = createDefaultAssessmentRegistry(
       path.resolve("engine"),
     ).list();
 
     expect(assessments).toEqual([
+      expect.objectContaining({
+        id: "inactive-users", name: "Mapear Usuários Inativos",
+        provider: "azure", domain: "secops", moduleId: "identity-visibility",
+        visibility: "public", requiredAuthProvider: "microsoft-graph",
+        requiredPermissions: ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"],
+        adminConsentRequired: true,
+      }),
       expect.objectContaining({
         id: "hello-world",
         provider: "azure",
@@ -49,6 +58,15 @@ describe("AssessmentRegistry", () => {
         adminConsentRequired: false,
       }),
     ]);
+  });
+
+  it("allows a bounded long inventory without changing diagnostic timeouts", () => {
+    const registry = createDefaultAssessmentRegistry(path.resolve("engine"));
+    expect(registry.resolve("inactive-users").timeoutMs).toBe(55 * 60_000);
+    expect(registry.resolve("inactive-users").maxConcurrentExecutions).toBe(1);
+    expect(registry.list()[0]).not.toHaveProperty("maxConcurrentExecutions");
+    expect(registry.resolve("microsoft-graph-connectivity").timeoutMs).toBe(60_000);
+    expect(() => new AssessmentRegistry(path.resolve("engine"), [{ ...registration, timeoutMs: 56 * 60_000 }])).toThrow(/timeout/);
   });
 
   it("does not resolve an unknown assessment", () => {
@@ -78,6 +96,11 @@ describe("AssessmentRegistry", () => {
       enabled: true,
       provider: "azure",
       domain: "devops",
+      moduleId: "runtime-validation",
+      moduleName: "Validação de runtime",
+      moduleDescription: "Testes de desenvolvimento do pipeline efêmero de execução e relatórios.",
+      moduleOrder: 1,
+      assessmentOrder: 1,
       visibility: "development",
       requiredAuthProvider: "none",
       requiredPermissions: [],
@@ -94,6 +117,7 @@ describe("AssessmentRegistry", () => {
         id: "graph-connectivity",
         provider: "azure",
         domain: "secops",
+        moduleId: "connectivity-diagnostics",
         visibility: "public",
         requiredAuthProvider: "microsoft-graph",
         requiredPermissions,

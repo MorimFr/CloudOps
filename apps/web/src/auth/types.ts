@@ -1,3 +1,5 @@
+import type { AuthIssue } from "./consent";
+
 export interface CloudOpsAccount {
   readonly displayName: string;
   readonly username: string;
@@ -20,10 +22,12 @@ export interface CloudOpsAuthState {
   readonly busy: boolean;
   readonly account: CloudOpsAccount | null;
   readonly error: string | null;
+  readonly authIssue: AuthIssue | null;
   readonly sessionEpoch: number;
   readonly login: () => Promise<void>;
   readonly switchAccount: () => Promise<void>;
   readonly logout: () => Promise<void>;
   readonly clearError: () => void;
   readonly getApiAccessToken: ApiAccessTokenProvider;
+  readonly requestCombinedConsent: () => Promise<void>;
 }

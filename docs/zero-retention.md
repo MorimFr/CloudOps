@@ -60,11 +60,16 @@ Código, documentação, registry e configuração estáticos fazem parte da ima
 ## Validação
 
 - testes frontend escaneiam módulos críticos contra APIs de storage persistente;
-- um teste com MSAL real simula login popup, tokens, aquisição silenciosa e nova instância, verificando zero gravações no Web Storage e zero abertura de IndexedDB;
+- um teste com MSAL real simula login combinado `.default`, reconsentimento `prompt=consent`, aquisição normal `Assessment.Run`, force refresh e nova instância, verificando zero gravações no Web Storage e zero abertura de IndexedDB;
 - testes de logging/redaction cobrem Authorization, tokens, secrets e claims;
 - testes do Execution Manager cobrem wipe, TTL, download único, abort e cross-user isolation;
 - `Validate-HelloWorld.ps1` compara snapshots/hashes do workspace e `/tmp`;
 - `Validate-GraphModule.ps1` usa Graph fake em memória e rede desabilitada;
+- `Validate-InactiveUsers.ps1` cobre wrapper stdin/ZIP, CSV/HTML, paginação, limites, descarte de ZIP parcial e snapshots de engine/`/tmp`; `-ScaleUsers 200000` gera páginas sintéticas sob demanda, sem rede nem arquivos de resultado;
 - CI executa os engines em container read-only/sem rede.
 
+O consentimento combinado não altera a fronteira de confiança: a API continua sendo o único cliente Graph do produto. Diálogo e retry guard guardam apenas metadata/estado de UX em RAM. Testes de navegador usam exclusivamente fixtures sintéticas, com captura de screenshots, traces e vídeo desligada por padrão; nunca rode captura de payload com identidade real.
+
 Os snapshots não detectam um arquivo criado e removido integralmente entre medições e não provam comportamento do host. Eles demonstram, junto ao código e ao filesystem read-only, que os engines não dependem de persistência.
+
+O inventário de inativos não cria checkpoints: guarda GUIDs de deduplicação, agregados, uma amostra limitada e o ZIP comprimido em RAM. Uma falha tardia descarta o ZIP completo. As métricas agregadas são visíveis durante a coleta somente ao proprietário; desaparecem se a execução falhar. HTML/CSV baixados podem conter PII e precisam de proteção e descarte pelo administrador.

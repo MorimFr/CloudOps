@@ -9,7 +9,7 @@ import {
 } from "@azure/msal-browser";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createMsalConfiguration } from "./msal";
+import { createMsalConfiguration, deriveCombinedConsentScope } from "./msal";
 
 const webId = "11111111-1111-4111-8111-111111111111";
 const tenantId = "22222222-2222-4222-8222-222222222222";
@@ -22,7 +22,7 @@ function encode(value: unknown): string {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("real MSAL browser storage behavior", () => {
-  it("keeps popup state, tokens and accounts in RAM across login and silent acquisition", async () => {
+  it("keeps combined login, reconsent and normal API tokens in RAM without persistent OAuth state", async () => {
     vi.stubGlobal("crypto", webcrypto);
     const storageWrite = vi.spyOn(Storage.prototype, "setItem");
     const databaseOpen = vi.fn(() => { throw new Error("Unexpected database access"); });
@@ -30,6 +30,7 @@ describe("real MSAL browser storage behavior", () => {
     let nonce = "";
     let callbackHash = "";
     let closed = false;
+    const popupRequests: URLSearchParams[] = [];
     const popup = {
       get closed() { return closed; },
       close: () => { closed = true; },
@@ -40,13 +41,18 @@ describe("real MSAL browser storage behavior", () => {
         get hash() { return callbackHash; },
         assign: (url: string) => {
           const parameters = new URL(url).searchParams;
+          popupRequests.push(parameters);
           nonce = parameters.get("nonce") ?? "";
           callbackHash = `#code=synthetic-code&state=${encodeURIComponent(parameters.get("state") ?? "")}`;
           expect(storageWrite).not.toHaveBeenCalled();
         },
       },
     };
-    vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    vi.spyOn(window, "open").mockImplementation(() => {
+      closed = false;
+      callbackHash = "";
+      return popup as unknown as Window;
+    });
     const post = vi.fn();
     const network: INetworkModule = {
       async sendGetRequestAsync<T>(): Promise<NetworkResponse<T>> {
@@ -90,7 +96,8 @@ describe("real MSAL browser storage behavior", () => {
     configuration.system = { ...configuration.system, networkClient: network, pollIntervalMilliseconds: 1 };
     const instance = new PublicClientApplication(configuration);
     await instance.initialize();
-    const login = await instance.loginPopup({ scopes: [scope] });
+    const combined = deriveCombinedConsentScope(scope);
+    const login = await instance.loginPopup({ scopes: [combined] });
     expect(login.accessToken).toBe("synthetic-api-access-token");
     expect(post).toHaveBeenCalledOnce();
     expect(new URLSearchParams(post.mock.calls[0]?.[0].body).get("code_verifier")).toBeTruthy();
@@ -98,6 +105,18 @@ describe("real MSAL browser storage behavior", () => {
     const silent = await instance.acquireTokenSilent({ scopes: [scope], account: login.account! });
     expect(silent.accessToken).toBe(login.accessToken);
     expect(post).toHaveBeenCalledOnce();
+    await instance.acquireTokenPopup({ scopes: [combined], account: login.account!, prompt: "consent" });
+    await instance.acquireTokenSilent({ scopes: [scope], account: login.account!, forceRefresh: true });
+    expect(post).toHaveBeenCalledTimes(3);
+    expect(popupRequests).toHaveLength(2);
+    for (const request of popupRequests) {
+      const requestedScopes = request.get("scope")?.split(" ");
+      expect(requestedScopes).toContain(combined);
+      expect(requestedScopes).not.toContain(scope);
+      expect(request.get("scope")).not.toContain("graph.microsoft.com");
+    }
+    expect(popupRequests[1]?.get("prompt")).toBe("consent");
+    expect(new URLSearchParams(post.mock.calls[2]?.[0].body).get("scope")).toContain(scope);
     expect(storageWrite).not.toHaveBeenCalled();
     expect(databaseOpen).not.toHaveBeenCalled();
 

@@ -13,6 +13,12 @@ const GUID_PATTERN =
 const API_SCOPE_PATTERN =
   /^api:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/Assessment\.Run$/i;
 
+export function deriveCombinedConsentScope(apiScope: string): string {
+  const match = API_SCOPE_PATTERN.exec(apiScope);
+  if (!match?.[1]) throw new Error("Invalid CloudOps API consent resource");
+  return `api://${match[1]}/.default`;
+}
+
 export interface EntraBrowserSettings {
   readonly clientId: string;
   readonly apiScope: string;

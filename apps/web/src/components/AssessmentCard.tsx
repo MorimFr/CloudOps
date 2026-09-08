@@ -1,8 +1,10 @@
 import type { AssessmentSummary } from "@cloudops/contracts";
+import type { PermissionState } from "../auth/consent";
 
 interface AssessmentCardProps {
   readonly assessment: AssessmentSummary;
   readonly busy?: boolean;
+  readonly permissionState?: PermissionState;
   readonly onExecute: (assessmentId: string) => void;
 }
 
@@ -19,9 +21,11 @@ function assessmentKind(assessment: AssessmentSummary): string {
 export function AssessmentCard({
   assessment,
   busy = false,
+  permissionState = "READY",
   onExecute,
 }: AssessmentCardProps) {
   const unavailable = !assessment.enabled;
+  const status = unavailable ? "Indisponível" : permissionState === "ADMIN_APPROVAL_REQUIRED" ? "Admin approval" : permissionState === "CONSENT_REQUIRED" ? "Permissões necessárias" : permissionState === "INTERACTION_REQUIRED" ? "Interação necessária" : "Disponível";
 
   return (
     <article
@@ -38,43 +42,38 @@ export function AssessmentCard({
         <span
           className={`availability ${assessment.enabled ? "available" : "unavailable"}`}
         >
-          {assessment.enabled ? "Disponível" : "Indisponível"}
+          {status}
         </span>
       </div>
 
       <div className="card-content">
-        <p className="assessment-kind">{assessmentKind(assessment)}</p>
         <h3 id={`assessment-${assessment.id}`}>{assessment.name}</h3>
-        <p>
+        <p className="assessment-description">
           {assessment.description ??
             "Execute esta avaliação pelo pipeline seguro e efêmero do CloudOps."}
         </p>
 
         {assessment.requiredPermissions.length > 0 && (
-          <div className="permission-block">
-            <span>Permissões necessárias</span>
-            <div className="permission-list">
+          <div className="permission-list" aria-label="Permissões necessárias">
               {assessment.requiredPermissions.map((permission) => (
                 <code key={permission}>{permission}</code>
               ))}
-            </div>
-            {assessment.adminConsentRequired && (
-              <small>Admin consent may be required</small>
-            )}
           </div>
         )}
+        {assessment.adminConsentRequired && <span className="admin-approval-badge">Admin approval</span>}
       </div>
 
       <div className="card-footer">
-        <code>{assessment.id}</code>
+        <span className="card-source">{assessmentKind(assessment)}</span>
         <button
+          id={`execute-${assessment.id}`}
           className="button button-secondary"
           type="button"
           disabled={unavailable || busy}
           aria-label={`Executar ${assessment.name}`}
           onClick={() => onExecute(assessment.id)}
         >
-          {busy ? "Em execução" : "Executar"}
+          Executar
           {!busy && <span aria-hidden="true">→</span>}
         </button>
       </div>

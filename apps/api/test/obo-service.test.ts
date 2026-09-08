@@ -13,6 +13,19 @@ import {
 const CLIENT_SECRET = "unit-test-client-secret-never-log";
 
 describe("MsalOboService", () => {
+  it("maps the inactive-user inventory to only its four read-only Graph scopes", async () => {
+    const acquire = vi.fn<OboClient["acquireTokenOnBehalfOf"]>().mockResolvedValue({ accessToken: "synthetic-graph-token" });
+    const clearCache = vi.fn();
+    const service = new MsalOboService({ clientId: TEST_API_CLIENT_ID, clientSecret: CLIENT_SECRET,
+      clientFactory: () => ({ acquireTokenOnBehalfOf: acquire, clearCache }) });
+    await service.acquireToken({ incomingApiAccessToken: "synthetic-api-token", tenantId: TEST_TENANT_A,
+      requiredPermissions: ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"] });
+    expect(acquire).toHaveBeenCalledWith({ oboAssertion: "synthetic-api-token", skipCache: true, scopes: [
+      "https://graph.microsoft.com/User.Read", "https://graph.microsoft.com/User.Read.All",
+      "https://graph.microsoft.com/AuditLog.Read.All", "https://graph.microsoft.com/LicenseAssignment.Read.All",
+    ] });
+    expect(clearCache).toHaveBeenCalledOnce();
+  });
   it("uses a tenant-bound ephemeral client and registry-mapped scopes", async () => {
     const configurations: Configuration[] = [];
     const requests: OnBehalfOfRequest[] = [];
@@ -111,6 +124,8 @@ describe("MsalOboService", () => {
   });
 
   it.each([
+    [{ errorCode: "invalid_grant", errorNo: "90094", message: "raw tenant" }, 403, "ADMIN_APPROVAL_REQUIRED"],
+    [{ errorCode: "access_denied", error_codes: [90095], message: "raw tenant" }, 403, "ADMIN_APPROVAL_REQUIRED"],
     [
       { errorCode: "invalid_grant", errorMessage: "AADSTS65001: consent" },
       403,

@@ -4,7 +4,7 @@ import {
   type Configuration,
   type OnBehalfOfRequest,
 } from "@azure/msal-node";
-import type { GraphPermission } from "@cloudops/contracts";
+import { classifyIdentityFailure, type GraphPermission } from "@cloudops/contracts";
 
 import { CloudOpsError, errors } from "../errors.js";
 import { isGuid, MICROSOFT_CONSUMER_TENANT_ID } from "./principal.js";
@@ -12,6 +12,9 @@ import { createIdentityNetwork } from "./identity-network.js";
 
 const GRAPH_SCOPES: Readonly<Record<GraphPermission, string>> = Object.freeze({
   "User.Read": "https://graph.microsoft.com/User.Read",
+  "User.Read.All": "https://graph.microsoft.com/User.Read.All",
+  "AuditLog.Read.All": "https://graph.microsoft.com/AuditLog.Read.All",
+  "LicenseAssignment.Read.All": "https://graph.microsoft.com/LicenseAssignment.Read.All",
 });
 const MAX_GRAPH_TOKEN_BYTES = 64 * 1_024;
 const MAX_CLAIMS_CHALLENGE_BYTES = 8 * 1_024;
@@ -63,22 +66,7 @@ function stringField(error: unknown, field: string): string | undefined {
 }
 
 function hasConsentError(error: unknown): boolean {
-  if (typeof error === "object" && error !== null && "errorCodes" in error) {
-    const errorCodes = (error as Record<string, unknown>).errorCodes;
-    if (
-      Array.isArray(errorCodes) &&
-      errorCodes.some((code) => code === 65001 || code === "65001")
-    ) {
-      return true;
-    }
-  }
-
-  return [
-    stringField(error, "errorCode"),
-    stringField(error, "subError"),
-    stringField(error, "errorMessage"),
-    stringField(error, "message"),
-  ].some((value) => value?.includes("AADSTS65001") === true);
+  return classifyIdentityFailure(error) === "consent";
 }
 
 function interactionRequired(error: unknown): boolean {
@@ -131,6 +119,9 @@ function safeAuthenticateHeader(error: unknown, tenantId: string): string {
 }
 
 function normalizeOboError(error: unknown, tenantId: string): Error {
+  if (classifyIdentityFailure(error) === "admin") {
+    return errors.adminApprovalRequired();
+  }
   if (hasConsentError(error)) {
     return errors.graphConsentRequired();
   }

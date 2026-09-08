@@ -39,6 +39,11 @@ const assessment: RegisteredAssessment = {
   enabled: true,
   provider: "azure",
   domain: "devops",
+  moduleId: "runtime-validation",
+  moduleName: "Validação de runtime",
+  moduleDescription: "Testes de desenvolvimento.",
+  moduleOrder: 1,
+  assessmentOrder: 1,
   visibility: "development",
   requiredAuthProvider: "none",
   requiredPermissions: [],
@@ -87,6 +92,7 @@ describe("PowerShellRuntime", () => {
       },
     });
     const onProgress = vi.fn();
+    const onPublicMetrics = vi.fn();
 
     const result = await runtime.execute({
       assessment,
@@ -98,6 +104,7 @@ describe("PowerShellRuntime", () => {
       signal: new AbortController().signal,
       onStarted: vi.fn(),
       onProgress,
+      onPublicMetrics,
     });
 
     expect(invocations[0]).toMatchObject({
@@ -117,6 +124,7 @@ describe("PowerShellRuntime", () => {
     expect(onProgress).toHaveBeenCalledWith("PROCESSING", 50);
     expect(result.artifact).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
     expect(result.publicMetrics).toEqual({ findings: 1, objectsAnalyzed: 2 });
+    expect(onPublicMetrics).toHaveBeenCalledWith({ findings: 1, objectsAnalyzed: 2 });
   });
 
   it("passes Graph auth only through stdin and never through child environment", async () => {

@@ -14,6 +14,8 @@ import {
 } from "react";
 
 import { CloudOpsAuthContext } from "./useCloudOpsAuth";
+import { deriveCombinedConsentScope, MICROSOFT_ORGANIZATIONS_AUTHORITY } from "./msal";
+import { safeConsentError, type AuthIssue } from "./consent";
 import type {
   ApiTokenRequest,
   CloudOpsAccount,
@@ -47,6 +49,7 @@ function DisabledAuthProvider({ children }: { readonly children: ReactNode }) {
       busy: false,
       account: null,
       error,
+      authIssue: null,
       sessionEpoch: 0,
       login: async () => {
         setError("Configure os App Registrations Microsoft Entra no arquivo .env.");
@@ -58,6 +61,9 @@ function DisabledAuthProvider({ children }: { readonly children: ReactNode }) {
       clearError: () => setError(null),
       getApiAccessToken: async () => {
         throw new Error("Microsoft Entra authentication is not configured.");
+      },
+      requestCombinedConsent: async () => {
+        throw safeConsentError(undefined);
       },
     }),
     [error],
@@ -80,10 +86,13 @@ function MsalAuthBridge({
   const { instance, accounts } = useMsal();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authIssue, setAuthIssue] = useState<AuthIssue | null>(null);
   const [sessionEpoch, setSessionEpoch] = useState(0);
   const [signedOut, setSignedOut] = useState(false);
   const sessionRevision = useRef(0);
   const sessionAllowed = useRef(true);
+  const interactionBusy = useRef(false);
+  const combinedConsentScope = deriveCombinedConsentScope(apiScope);
 
   const activeAccount = signedOut
     ? null
@@ -97,11 +106,14 @@ function MsalAuthBridge({
 
   const performLogin = useCallback(
     async (prompt?: "select_account") => {
+      if (interactionBusy.current) return;
+      interactionBusy.current = true;
       setBusy(true);
       setError(null);
+      setAuthIssue(null);
       try {
         const result = await instance.loginPopup({
-          scopes: [apiScope],
+          scopes: [combinedConsentScope],
           ...(prompt ? { prompt } : {}),
         });
         if (!result.account) {
@@ -111,19 +123,52 @@ function MsalAuthBridge({
         sessionAllowed.current = true;
         setSignedOut(false);
         setSessionEpoch(++sessionRevision.current);
-      } catch {
-        setError("Não foi possível concluir a autenticação Microsoft.");
+      } catch (reason) {
+        const safe = safeConsentError(reason);
+        setError(safe.message);
+        setAuthIssue(safe.issue);
       } finally {
+        interactionBusy.current = false;
         setBusy(false);
       }
     },
-    [apiScope, instance],
+    [combinedConsentScope, instance],
   );
+
+  const requestCombinedConsent = useCallback(async () => {
+    const account = instance.getActiveAccount() ?? accounts[0];
+    if (!account || !sessionAllowed.current || interactionBusy.current) throw safeConsentError(undefined);
+    const revision = sessionRevision.current;
+    interactionBusy.current = true;
+    setBusy(true);
+    try {
+      // This response is for the CloudOps API, not Graph. Its token is not
+      // returned or put into React state; execution acquires Assessment.Run next.
+      const result = await instance.acquireTokenPopup({
+        scopes: [combinedConsentScope],
+        prompt: "consent",
+        account,
+        authority: `${MICROSOFT_ORGANIZATIONS_AUTHORITY.replace(/\/organizations$/, "")}/${account.tenantId}`,
+      });
+      if (
+        !sessionAllowed.current || revision !== sessionRevision.current ||
+        result.account?.homeAccountId !== account.homeAccountId ||
+        result.account?.tenantId !== account.tenantId ||
+        result.account?.localAccountId !== account.localAccountId
+      ) throw safeConsentError(undefined);
+    } catch (reason) {
+      throw safeConsentError(reason);
+    } finally {
+      interactionBusy.current = false;
+      setBusy(false);
+    }
+  }, [accounts, combinedConsentScope, instance]);
 
   const logout = useCallback(async () => {
     const account = instance.getActiveAccount() ?? accounts[0] ?? undefined;
     setBusy(true);
     setError(null);
+    setAuthIssue(null);
     sessionAllowed.current = false;
     setSignedOut(true);
     instance.setActiveAccount(null);
@@ -193,20 +238,24 @@ function MsalAuthBridge({
       busy,
       account: publicAccount(activeAccount),
       error,
+      authIssue,
       sessionEpoch,
       login: async () => performLogin(),
       switchAccount: async () => performLogin("select_account"),
       logout,
-      clearError: () => setError(null),
+      clearError: () => { setError(null); setAuthIssue(null); },
       getApiAccessToken,
+      requestCombinedConsent,
     }),
     [
       activeAccount,
       busy,
       error,
+      authIssue,
       getApiAccessToken,
       logout,
       performLogin,
+      requestCombinedConsent,
       sessionEpoch,
     ],
   );

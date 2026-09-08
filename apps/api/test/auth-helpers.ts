@@ -14,6 +14,7 @@ import {
 
 export const TEST_API_CLIENT_ID =
   "11111111-1111-4111-8111-111111111111";
+export const TEST_WEB_CLIENT_ID = "66666666-6666-4666-8666-666666666666";
 export const TEST_TENANT_A =
   "22222222-2222-4222-8222-222222222222";
 export const TEST_TENANT_B =
@@ -29,6 +30,7 @@ export interface TestTokenOptions {
   readonly tenantId?: string;
   readonly objectId?: string;
   readonly audience?: string;
+  readonly authorizedParty?: string | null;
   readonly issuer?: string;
   readonly version?: string;
   readonly scope?: string | null;
@@ -61,6 +63,7 @@ export async function createLocalAuthHarness(): Promise<LocalAuthHarness> {
   };
   const validator = new EntraTokenValidator({
     audience: TEST_API_CLIENT_ID,
+    authorizedParty: TEST_WEB_CLIENT_ID,
     keyProvider,
     clockToleranceSeconds: 0,
   });
@@ -76,6 +79,7 @@ export async function createLocalAuthHarness(): Promise<LocalAuthHarness> {
       ver: options.version ?? "2.0",
       tid: tenantId,
       oid: objectId,
+      ...(options.authorizedParty === null ? {} : { azp: options.authorizedParty ?? TEST_WEB_CLIENT_ID }),
       ...(scope === null ? {} : { scp: scope }),
       ...(options.roles ? { roles: [...options.roles] } : {}),
       ...(options.idtyp ? { idtyp: options.idtyp } : {}),

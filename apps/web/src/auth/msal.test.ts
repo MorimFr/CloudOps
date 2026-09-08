@@ -6,9 +6,17 @@ import {
   MICROSOFT_ORGANIZATIONS_AUTHORITY,
   createMsalConfiguration,
   readEntraBrowserSettings,
+  deriveCombinedConsentScope,
 } from "./msal";
 
 describe("MSAL browser configuration", () => {
+  it("derives combined consent from the validated API resource without mixing scopes", () => {
+    expect(deriveCombinedConsentScope("api://22222222-2222-4222-8222-222222222222/Assessment.Run"))
+      .toBe("api://22222222-2222-4222-8222-222222222222/.default");
+    for (const invalid of ["https://graph.microsoft.com/User.Read", "api://22222222-2222-4222-8222-222222222222/.default", "api://22222222-2222-4222-8222-222222222222/Assessment.Run other", "api://../../Assessment.Run"]) {
+      expect(() => deriveCombinedConsentScope(invalid)).toThrow();
+    }
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
   });

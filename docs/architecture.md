@@ -38,6 +38,8 @@ Para Azure, MSAL autentica contas work/school pela authority `organizations`. O 
 
 O catálogo é carregado depois da autenticação e filtrado dinamicamente pelos metadados do registry. Estado de sessão, account, tenant, execution e Blob URL fica somente na memória da página.
 
+O catálogo segue `provider → domain → module → assessment`, com Module Registry central, ordenação determinística e temas por provider. Consentimento combinado (`.default`) ocorre em popup separado do token normal (`Assessment.Run`). Recovery e aprovação administrativa ficam em diálogo próprio; não alteram o ExecutionPanel aprovado.
+
 ## API e boundary de autenticação
 
 Somente `GET /api/v1/health` é público. O hook Entra protege todas as rotas de assessment/execution; handlers também exigem explicitamente a identidade quando usam estado.
@@ -49,6 +51,7 @@ O validator aceita somente access token v2:
 - audience do App Registration CloudOps API;
 - dentro da validade temporal;
 - com delegated scope `Assessment.Run`;
+- com `azp` do Web autorizado (`CLOUDOPS_ENTRA_WEB_CLIENT_ID`);
 - com `oid` de usuário.
 
 Metadata/JWKS têm timeout, limite de tamanho e cache apenas em memória.
@@ -64,7 +67,7 @@ Um restart perde todas as executions por design.
 O Assessment Registry é a única origem para:
 
 - script aprovado;
-- provider/domain/visibility;
+- provider/domain/module/visibility e ordem;
 - auth provider;
 - delegated Graph permissions;
 - timeout/habilitação.

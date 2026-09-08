@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 import {
+  CloudOpsApiError,
   createExecution,
   downloadExecutionArtifact,
   getExecution,
@@ -11,6 +12,8 @@ import {
 } from "./api/cloudops";
 import { CloudOpsAuthContext } from "./auth/useCloudOpsAuth";
 import type { CloudOpsAuthState } from "./auth/types";
+import { safeConsentError } from "./auth/consent";
+import { CLOUD_PROVIDERS } from "./config/providers";
 
 vi.mock("./api/cloudops", async (importOriginal) => {
   const original = await importOriginal<typeof import("./api/cloudops")>();
@@ -37,6 +40,11 @@ const graphAssessment = {
   enabled: true,
   provider: "azure",
   domain: "secops",
+  moduleId: "connectivity-diagnostics",
+  moduleName: "Conectividade e diagnóstico",
+  moduleDescription: "Validação técnica.",
+  moduleOrder: 4,
+  assessmentOrder: 1,
   visibility: "public",
   requiredAuthProvider: "microsoft-graph",
   requiredPermissions: ["User.Read"],
@@ -50,6 +58,11 @@ const helloAssessment = {
   enabled: true,
   provider: "azure",
   domain: "devops",
+  moduleId: "runtime-validation",
+  moduleName: "Validação de runtime",
+  moduleDescription: "Testes de desenvolvimento.",
+  moduleOrder: 1,
+  assessmentOrder: 1,
   visibility: "development",
   requiredAuthProvider: "none",
   requiredPermissions: [],
@@ -69,12 +82,14 @@ function authState(
       tenantId: "11111111-1111-4111-8111-111111111111",
     },
     error: null,
+    authIssue: null,
     sessionEpoch: 1,
     login: vi.fn(async () => undefined),
     switchAccount: vi.fn(async () => undefined),
     logout: vi.fn(async () => undefined),
     clearError: vi.fn(),
     getApiAccessToken: getToken,
+    requestCombinedConsent: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -90,7 +105,9 @@ function renderApp(path: string, auth = authState()) {
 }
 
 describe("CloudOps multicloud application", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
+    mockedCreateExecution.mockReset();
     mockedListAssessments.mockResolvedValue([
       graphAssessment,
       helloAssessment,
@@ -113,6 +130,136 @@ describe("CloudOps multicloud application", () => {
       expiresAt: "2026-09-02T12:05:00.000Z",
     });
     mockedDownload.mockResolvedValue(undefined);
+  });
+
+  it.each(CLOUD_PROVIDERS)("applies $id theme variables without changing the five areas", (provider) => {
+    const { container } = renderApp(`/${provider.id}/dashboard`);
+    const layout = container.querySelector<HTMLElement>(".provider-layout")!;
+    expect(layout.style.getPropertyValue("--provider-primary")).toBe(provider.theme.primary);
+    expect(layout.style.getPropertyValue("--provider-secondary")).toBe(provider.theme.secondary);
+    expect(layout.style.getPropertyValue("--provider-tertiary")).toBe(provider.theme.tertiary);
+    expect(layout.style.getPropertyValue("--provider-quaternary")).toBe(provider.theme.quaternary);
+    expect(screen.getByRole("navigation", { name: `Áreas ${provider.name}` }).querySelectorAll("a")).toHaveLength(5);
+  });
+
+  it("keeps development tools opt-in and filters provider/domain and disabled tools", async () => {
+    vi.stubEnv("VITE_SHOW_DEV_ASSESSMENTS", "false");
+    const view = renderApp("/azure/devops");
+    await screen.findByText("Nenhum assessment disponível nesta categoria ainda.");
+    expect(screen.queryByRole("heading", { name: helloAssessment.name })).not.toBeInTheDocument();
+    view.unmount();
+    vi.stubEnv("VITE_SHOW_DEV_ASSESSMENTS", "true");
+    mockedListAssessments.mockResolvedValueOnce([helloAssessment, graphAssessment, { ...helloAssessment, id: "disabled-tool", name: "Disabled tool", enabled: false }, { ...helloAssessment, id: "aws-tool", name: "AWS tool", provider: "aws" }]);
+    renderApp("/azure/devops");
+    await screen.findByRole("heading", { name: helloAssessment.name });
+    expect(screen.getByRole("heading", { name: "Validação de runtime" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Disabled tool" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "AWS tool" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: graphAssessment.name })).not.toBeInTheDocument();
+  });
+
+  it("groups arbitrary registry cards by module and hides absent modules", async () => {
+    mockedListAssessments.mockResolvedValueOnce([
+      { ...graphAssessment, id: "later", name: "Later", assessmentOrder: 2 },
+      { ...graphAssessment, id: "earlier", name: "Earlier", assessmentOrder: 1 },
+      { ...graphAssessment, id: "first-module-tool", name: "First module tool", moduleId: "custom-module", moduleName: "Custom registry module", moduleOrder: 1 },
+    ]);
+    const { container } = renderApp("/azure/secops");
+    await screen.findByRole("heading", { name: "Custom registry module" });
+    expect([...container.querySelectorAll(".module-header h2")].map((item) => item.textContent)).toEqual(["Custom registry module", "Conectividade e diagnóstico"]);
+    expect([...container.querySelectorAll(".assessment-card h3")].map((item) => item.textContent)).toEqual(["First module tool", "Earlier", "Later"]);
+    expect(screen.queryByRole("heading", { name: "Proteção e resposta" })).not.toBeInTheDocument();
+  });
+
+  it("offers separate consent recovery and refreshes the API token before a single retry", async () => {
+    const requestConsent = vi.fn(async () => undefined);
+    mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));
+    mockedCreateExecution.mockImplementationOnce(async (_request, provider) => {
+      await provider();
+      return { executionId: "EXE-550e8400-e29b-41d4-a716-446655440000", status: "STARTING" };
+    });
+    renderApp("/azure/secops", authState({ requestCombinedConsent: requestConsent }));
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    const dialog = await screen.findByRole("dialog", { name: "Permissões adicionais necessárias" });
+    expect(dialog).toHaveTextContent("User.Read");
+    expect(screen.queryByRole("complementary", { name: graphAssessment.name })).not.toBeInTheDocument();
+    expect(requestConsent).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Conceder permissões" }));
+    await waitFor(() => expect(mockedCreateExecution).toHaveBeenCalledTimes(2));
+    expect(requestConsent).toHaveBeenCalledOnce();
+    expect(getToken).toHaveBeenCalledWith({ forceRefresh: true });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does not loop after consent succeeds but the single retry is still denied", async () => {
+    mockedCreateExecution.mockRejectedValue(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));
+    const requestConsent = vi.fn(async () => undefined);
+    renderApp("/azure/secops", authState({ requestCombinedConsent: requestConsent }));
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    fireEvent.click(await screen.findByRole("button", { name: "Conceder permissões" }));
+    await waitFor(() => expect(mockedCreateExecution).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/A repetição única já foi utilizada/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Conceder permissões" })).not.toBeInTheDocument();
+    expect(requestConsent).toHaveBeenCalledOnce();
+  });
+
+  it.each(["user_cancelled", "network_error"])("keeps %s safe without automatically repeating the operation", async (errorCode) => {
+    mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));
+    const requestConsent = vi.fn(async () => { throw safeConsentError({ errorCode, message: "raw-sensitive-auth-detail" }); });
+    renderApp("/azure/secops", authState({ requestCombinedConsent: requestConsent }));
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    fireEvent.click(await screen.findByRole("button", { name: "Conceder permissões" }));
+    await waitFor(() => expect(requestConsent).toHaveBeenCalledOnce());
+    await screen.findByText(errorCode === "user_cancelled" ? /Consentimento cancelado/ : /Não foi possível concluir a interação/);
+    expect(mockedCreateExecution).toHaveBeenCalledOnce();
+    expect(document.body).not.toHaveTextContent("raw-sensitive-auth-detail");
+    expect(screen.queryByRole("complementary", { name: graphAssessment.name })).not.toBeInTheDocument();
+  });
+
+  it("presents explicit administrative approval without granting anything or replaying as another account", async () => {
+    const auth = authState();
+    mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "ADMIN_APPROVAL_REQUIRED"));
+    renderApp("/azure/secops", auth);
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    expect(await screen.findByRole("dialog", { name: "Aprovação administrativa necessária" })).toHaveTextContent("User.Read");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar com uma conta administrativa" }));
+    expect(auth.switchAccount).toHaveBeenCalledOnce();
+    expect(auth.requestCombinedConsent).not.toHaveBeenCalled();
+    expect(mockedCreateExecution).toHaveBeenCalledOnce();
+  });
+
+  it("recognizes administrative approval from normal MSAL token acquisition too", async () => {
+    mockedCreateExecution.mockRejectedValueOnce({ errorCode: "invalid_grant", errorMessage: "AADSTS90094: raw-sensitive-auth-detail" });
+    renderApp("/azure/secops");
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    expect(await screen.findByRole("dialog", { name: "Aprovação administrativa necessária" })).toBeVisible();
+    expect(document.body).not.toHaveTextContent("raw-sensitive-auth-detail");
+    expect(mockedCreateExecution).toHaveBeenCalledOnce();
+  });
+
+  it("does not allocate another consent retry after Conditional Access consumes the shared budget", async () => {
+    mockedCreateExecution.mockImplementationOnce(async (_request, _provider, budget) => {
+      if (budget) budget.remaining = 0;
+      throw new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED");
+    });
+    renderApp("/azure/secops");
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    expect(await screen.findByText(/A repetição única já foi utilizada/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Conceder permissões" })).not.toBeInTheDocument();
+  });
+
+  it("does not replay a pending recovery after the owning workspace unmounts", async () => {
+    let resolveConsent!: () => void;
+    const requestConsent = vi.fn(() => new Promise<void>((resolve) => { resolveConsent = resolve; }));
+    mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));
+    const view = renderApp("/azure/secops", authState({ requestCombinedConsent: requestConsent }));
+    fireEvent.click(await screen.findByRole("button", { name: `Executar ${graphAssessment.name}` }));
+    fireEvent.click(await screen.findByRole("button", { name: "Conceder permissões" }));
+    expect(requestConsent).toHaveBeenCalledOnce();
+    view.unmount();
+    resolveConsent();
+    await Promise.resolve();
+    expect(mockedCreateExecution).toHaveBeenCalledOnce();
   });
 
   it("uses the URL as provider state and exposes all five areas for AWS", async () => {
@@ -205,6 +352,7 @@ describe("CloudOps multicloud application", () => {
         options: {},
       },
       getToken,
+      expect.objectContaining({ remaining: 1 }),
     );
 
     const download = await screen.findByRole(

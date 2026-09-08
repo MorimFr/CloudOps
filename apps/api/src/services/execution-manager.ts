@@ -184,6 +184,13 @@ export class ExecutionManager {
     if (this.#activeExecutionCount() >= this.#maxConcurrentExecutions) {
       throw errors.capacityReached();
     }
+    if (assessment.maxConcurrentExecutions !== undefined) {
+      let activeForAssessment = 0;
+      for (const state of this.#executions.values()) {
+        if (state.assessmentId === assessment.id && ACTIVE_STATUSES.has(state.status)) activeForAssessment++;
+      }
+      if (activeForAssessment >= assessment.maxConcurrentExecutions) throw errors.capacityReached();
+    }
 
     if (
       !/^[A-Za-z0-9_-]{43}$/.test(authenticated.principal.ownerKey) ||
@@ -451,6 +458,14 @@ export class ExecutionManager {
           state.stage = stage;
           state.progress = Math.max(state.progress, progress);
           this.#emitLifecycle(state);
+        },
+        onPublicMetrics: (metrics) => {
+          const state = this.#executions.get(initialState.executionId);
+          if (!state || !ACTIVE_STATUSES.has(state.status)) return;
+          const parsed = PublicMetricsSchema.safeParse(metrics);
+          if (!parsed.success) throw new PowerShellRuntimeError("INVALID_CONTROL_OUTPUT");
+          // Only allowlisted aggregates, no per-user records or lifecycle logs.
+          state.publicMetrics = structuredClone(parsed.data);
         },
       });
       runtimeContext = undefined;

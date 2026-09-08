@@ -4,12 +4,16 @@ import appSource from "../App.tsx?raw";
 import apiSource from "../api/cloudops.ts?raw";
 import authProviderSource from "./AuthProvider.tsx?raw";
 import msalSource from "./msal.ts?raw";
+import launchSource from "./useAssessmentLaunch.ts?raw";
+import consentSource from "./consent.ts?raw";
 
 const SECURITY_CRITICAL_CLIENT_SOURCES = [
   msalSource,
   authProviderSource,
   apiSource,
   appSource,
+  launchSource,
+  consentSource,
 ];
 
 describe("frontend zero-retention storage policy", () => {

@@ -39,9 +39,20 @@ export type AssessmentAuthProvider = z.infer<
   typeof AssessmentAuthProviderSchema
 >;
 
-export const GRAPH_PERMISSIONS = ["User.Read"] as const;
+export const GRAPH_PERMISSIONS = ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"] as const;
 export const GraphPermissionSchema = z.enum(GRAPH_PERMISSIONS);
 export type GraphPermission = z.infer<typeof GraphPermissionSchema>;
+
+export const CatalogOrderSchema = z.number().int().min(1).max(999);
+export const AssessmentModuleSchema = z.object({
+  id: AssessmentIdSchema,
+  name: z.string().min(1).max(120),
+  description: z.string().min(1).max(300),
+  order: CatalogOrderSchema,
+  provider: CloudProviderSchema,
+  domain: OperationalDomainSchema,
+}).strict();
+export type AssessmentModule = z.infer<typeof AssessmentModuleSchema>;
 
 export const AssessmentOptionsSchema = z.record(z.string(), z.unknown());
 
@@ -72,6 +83,11 @@ export const AssessmentSummarySchema = z
     enabled: z.boolean(),
     provider: CloudProviderSchema,
     domain: OperationalDomainSchema,
+    moduleId: AssessmentIdSchema,
+    moduleName: z.string().min(1).max(120),
+    moduleDescription: z.string().min(1).max(300),
+    moduleOrder: CatalogOrderSchema,
+    assessmentOrder: CatalogOrderSchema,
     visibility: AssessmentVisibilitySchema,
     requiredAuthProvider: AssessmentAuthProviderSchema,
     requiredPermissions: z.array(GraphPermissionSchema).max(16).readonly(),
@@ -80,3 +96,18 @@ export const AssessmentSummarySchema = z
   .strict();
 
 export type AssessmentSummary = z.infer<typeof AssessmentSummarySchema>;
+
+export const AssessmentCatalogSchema = AssessmentSummarySchema.array().superRefine((items, context) => {
+  const ids = new Set<string>();
+  const modules = new Map<string, string>();
+  for (const item of items) {
+    const metadata = JSON.stringify([
+      item.provider, item.domain, item.moduleName, item.moduleDescription, item.moduleOrder,
+    ]);
+    if (ids.has(item.id) || (modules.has(item.moduleId) && modules.get(item.moduleId) !== metadata)) {
+      context.addIssue({ code: "custom", message: "Inconsistent catalog metadata" });
+    }
+    ids.add(item.id);
+    modules.set(item.moduleId, metadata);
+  }
+});

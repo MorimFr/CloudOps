@@ -13,14 +13,16 @@ import type {
 
 import {
   CloudOpsApiError,
-  createExecution,
   downloadExecutionArtifact,
   getExecution,
   listAssessments,
 } from "./api/cloudops";
 import { useCloudOpsAuth } from "./auth/useCloudOpsAuth";
 import type { CloudOpsAuthState } from "./auth/types";
-import { AssessmentCard } from "./components/AssessmentCard";
+import { useAssessmentLaunch } from "./auth/useAssessmentLaunch";
+import { groupAssessmentsByModule } from "./catalog/modules";
+import { CatalogModuleSection } from "./components/CatalogModuleSection";
+import { ConsentRequiredPanel } from "./components/ConsentRequiredPanel";
 import { CloudSelector } from "./components/CloudSelector";
 import {
   ExecutionPanel,
@@ -33,6 +35,7 @@ import {
   isCloudProviderId,
   isOperationalDomainId,
   operationalDomainById,
+  providerThemeStyle,
   type CloudProvider,
   type OperationalDomainId,
 } from "./config/providers";
@@ -186,11 +189,12 @@ function ProviderWorkspace({
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [execution, setExecution] = useState<ExecutionPanelModel | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
-  const [creatingAssessmentId, setCreatingAssessmentId] = useState<
-    string | null
-  >(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
+  const launch = useAssessmentLaunch(auth,
+    (created, assessmentId) => setExecution(initialExecution(created.executionId, assessmentId, created.status)),
+    (error) => setExecutionError(humanError(error)),
+  );
 
   useEffect(() => {
     if (!requiresMicrosoft || !auth.authenticated) {
@@ -291,12 +295,15 @@ function ProviderWorkspace({
         (assessment) =>
           assessment.provider === provider.id &&
           assessment.domain === domainId &&
+          assessment.enabled &&
           (assessment.visibility === "public" ||
             (assessment.visibility === "development" &&
               showDevelopmentAssessments())),
       ),
     [catalog.assessments, domainId, provider.id],
   );
+
+  const modules = useMemo(() => groupAssessmentsByModule(visibleAssessments), [visibleAssessments]);
 
   const activeAssessment = useMemo(
     () =>
@@ -317,23 +324,12 @@ function ProviderWorkspace({
       return;
     }
 
-    setCreatingAssessmentId(assessmentId);
+    if (hasActiveExecution) return;
+    const assessment = visibleAssessments.find((item) => item.id === assessmentId);
+    if (!assessment) return;
     setExecutionError(null);
     setDownloadComplete(false);
-
-    try {
-      const created = await createExecution(
-        { assessmentId, options: {} },
-        auth.getApiAccessToken,
-      );
-      setExecution(
-        initialExecution(created.executionId, assessmentId, created.status),
-      );
-    } catch (error) {
-      setExecutionError(humanError(error));
-    } finally {
-      setCreatingAssessmentId(null);
-    }
+    await launch.launch(assessment);
   };
 
   const downloadArtifact = async () => {
@@ -368,7 +364,7 @@ function ProviderWorkspace({
   };
 
   return (
-    <div className="provider-layout">
+    <div className="provider-layout" style={providerThemeStyle(provider)} data-provider={provider.id}>
       <ProviderSidebar provider={provider} auth={auth} />
 
       <div className="provider-workspace">
@@ -389,9 +385,15 @@ function ProviderWorkspace({
 
         <main id="workspace-content" className="workspace-main">
           <section className="workspace-hero" aria-labelledby="workspace-title">
-            <p className="eyebrow">{provider.services}</p>
+            <div className="workspace-hero-copy">
+            <p className="eyebrow">{provider.name} / {domain.label}</p>
             <h1 id="workspace-title">{domain.label}</h1>
             <p>{domain.description}</p>
+            </div>
+            <div className="hero-provider-summary">
+              <span className="provider-monogram" aria-hidden="true">{provider.monogram}</span>
+              <div><strong>{provider.name}</strong><span>{visibleAssessments.length} {visibleAssessments.length === 1 ? "ferramenta" : "ferramentas"} no catálogo</span></div>
+            </div>
           </section>
 
           {requiresMicrosoft && domainId === "dashboard" && (
@@ -471,15 +473,10 @@ function ProviderWorkspace({
               auth.authenticated &&
               catalog.status === "ready" &&
               visibleAssessments.length > 0 && (
-                <div className="assessment-grid">
-                  {visibleAssessments.map((assessment) => (
-                    <AssessmentCard
-                      key={assessment.id}
-                      assessment={assessment}
-                      busy={creatingAssessmentId !== null || hasActiveExecution}
-                      onExecute={(id) => void runAssessment(id)}
-                    />
-                  ))}
+                <div className="catalog-modules">
+                  {modules.map((module) => <CatalogModuleSection key={module.id} module={module}
+                    busy={launch.creatingId !== null || launch.consenting || hasActiveExecution || auth.busy}
+                    consent={launch.consent} onExecute={(id) => void runAssessment(id)} />)}
                 </div>
               )
             )}
@@ -505,6 +502,18 @@ function ProviderWorkspace({
           <span>PowerShell 7 · processamento efêmero</span>
         </footer>
       </div>
+
+      {requiresMicrosoft && (launch.consent || auth.authIssue) && (
+        <ConsentRequiredPanel issue={launch.consent ?? auth.authIssue!}
+          assessmentName={launch.consent?.assessment.name}
+          returnFocusId={launch.consent ? `execute-${launch.consent.assessment.id}` : undefined}
+          permissions={launch.consent?.assessment.requiredPermissions ?? []}
+          busy={launch.consenting || auth.busy}
+          retryAvailable={launch.consent?.retryAvailable ?? true}
+          onConsent={() => { if (launch.consent) void launch.recover(); else void auth.login(); }}
+          onSwitchAccount={() => { launch.dismissConsent(); auth.clearError(); void auth.switchAccount(); }}
+          onClose={() => { launch.dismissConsent(); auth.clearError(); }} />
+      )}
 
       {execution && (
         <ExecutionPanel

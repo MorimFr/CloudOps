@@ -10,6 +10,7 @@ import {
 import {
   createLocalAuthHarness,
   TEST_API_CLIENT_ID,
+  TEST_WEB_CLIENT_ID,
   TEST_OBJECT_B,
   TEST_TENANT_A,
   TEST_TENANT_B,
@@ -38,6 +39,8 @@ describe("EntraTokenValidator", () => {
     ["expired", { expirationTime: Math.floor(Date.now() / 1_000) - 60 }],
     ["issuer mismatch", { issuer: "https://login.microsoftonline.com/common/v2.0" }],
     ["wrong version", { version: "1.0" }],
+    ["wrong azp", { authorizedParty: TEST_API_CLIENT_ID }],
+    ["missing azp", { authorizedParty: null }],
     ["future not-before", { notBefore: Math.floor(Date.now() / 1_000) + 300 }],
   ] as const)("rejects a token with %s", async (_name, options) => {
     const harness = await createLocalAuthHarness();
@@ -119,6 +122,7 @@ describe("MicrosoftOrganizationsKeyProvider", () => {
     });
     const validator = new EntraTokenValidator({
       audience: TEST_API_CLIENT_ID,
+      authorizedParty: TEST_WEB_CLIENT_ID,
       keyProvider: new MicrosoftOrganizationsKeyProvider({
         fetchImplementation: fetchImplementation as unknown as typeof fetch,
       }),
@@ -145,6 +149,7 @@ describe("MicrosoftOrganizationsKeyProvider", () => {
     });
     const invalidIssuerValidator = new EntraTokenValidator({
       audience: TEST_API_CLIENT_ID,
+      authorizedParty: TEST_WEB_CLIENT_ID,
       keyProvider: new MicrosoftOrganizationsKeyProvider({
         fetchImplementation:
           invalidIssuerFetch as unknown as typeof fetch,

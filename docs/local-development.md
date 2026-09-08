@@ -26,6 +26,7 @@ VITE_CLOUDOPS_API_URL=http://localhost:3000
 VITE_ENTRA_WEB_CLIENT_ID=<WEB_CLIENT_ID>
 VITE_ENTRA_API_SCOPE=api://<API_CLIENT_ID>/Assessment.Run
 CLOUDOPS_ENTRA_API_CLIENT_ID=<API_CLIENT_ID>
+CLOUDOPS_ENTRA_WEB_CLIENT_ID=<WEB_CLIENT_ID>
 CLOUDOPS_ENTRA_API_CLIENT_SECRET=<API_CLIENT_SECRET_VALUE>
 
 ARTIFACT_TTL_SECONDS=300
@@ -36,6 +37,8 @@ VITE_SHOW_DEV_ASSESSMENTS=false
 ```
 
 Não use tenant ID fixo. O client secret é somente local e nunca deve usar prefixo `VITE_`.
+
+Se `.env` já existir, não o sobrescreva: adicione apenas a variável backend Web, com o mesmo valor do ID Web público. O backend não lê `VITE_*`. Confirme o manifest `knownClientApplications` conforme [Entra setup](entra-setup.md). Isso é migração da aplicação, não configuração por tenant.
 
 ## Executar
 
@@ -99,7 +102,12 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run test:ui
 ```
+
+O teste de navegador usa Edge instalado no Windows e Chromium em Linux/macOS (`npx playwright install chromium`). A porta isolada é 5174; a API e a identidade são interceptadas com fixtures sintéticas, sem login real ou bypass no bundle de produção. Os cards extras existem apenas nas fixtures para provar o grid. Não habilite traces, vídeos ou screenshots com dados reais; estão desligados por padrão. Em CI, Chromium é instalado antes desses testes.
+
+Para testar combined consent real e revogação opcional de grants de laboratório, siga [o procedimento exato](entra-setup.md#9-testar-tenant-novo-ou-revogar-consentimento-antigo). Não conceda `User.Read` manualmente antes do aceite.
 
 Sem `pwsh` no host:
 
@@ -109,7 +117,13 @@ docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,s
 docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env HOME=/tmp/cloudops-home cloudops-development:local pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-HelloWorld.ps1
 ```
 
-## Inspecionar
+## Mapear Usuários Inativos
+
+Veja [permissões, critérios e coleta de 200 mil usuários](inactive-users.md). O ZIP contém HTML executivo e CSV somente de inativos. Sem login registrado, a criação precisa ter completado 90 dias. Teste sintético em PowerShell 7: `pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-InactiveUsers.ps1 -ScaleUsers 200000`.
+
+Para validar HTML em desktop/mobile/impressão: `npm run test:reports` (Docker e imagem `cloudops-runtime:local`; override `CLOUDOPS_TEST_IMAGE`). Não usa Graph real. Não habilite screenshots/traces/HAR com uma sessão real.
+
+## Inspecionar containers
 
 ```powershell
 docker compose ps

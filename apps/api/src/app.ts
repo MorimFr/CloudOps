@@ -132,6 +132,7 @@ export async function buildApp(
     options.tokenValidator ??
     new EntraTokenValidator({
       audience: config.entraApiClientId,
+      authorizedParty: config.entraWebClientId,
       keyProvider: new MicrosoftOrganizationsKeyProvider(),
     });
   const auth = new EntraAuth(tokenValidator);

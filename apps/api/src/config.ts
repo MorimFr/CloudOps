@@ -15,6 +15,7 @@ export interface ApiConfig {
   readonly powershellHealthCacheMs: number;
   readonly engineRoot?: string;
   readonly entraApiClientId: string;
+  readonly entraWebClientId: string;
   readonly entraApiClientSecret: string;
 }
 
@@ -136,6 +137,7 @@ export function loadConfig(
       3_600,
     ) * 1_000,
     entraApiClientId: environment.CLOUDOPS_ENTRA_API_CLIENT_ID?.trim() || "",
+    entraWebClientId: environment.CLOUDOPS_ENTRA_WEB_CLIENT_ID?.trim() || "",
     entraApiClientSecret:
       environment.CLOUDOPS_ENTRA_API_CLIENT_SECRET?.trim() || "",
     ...(environment.CLOUDOPS_ENGINE_ROOT?.trim()

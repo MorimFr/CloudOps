@@ -98,7 +98,7 @@ function Get-CloudOpsRetryDelayMilliseconds {
         [int] $Attempt,
 
         [Parameter(Mandatory)]
-        [ValidateRange(0, 60)]
+        [ValidateRange(0, 300)]
         [int] $MaximumRetryAfterSeconds
     )
 
@@ -113,7 +113,12 @@ function Get-CloudOpsRetryDelayMilliseconds {
         }
     }
 
-    $seconds = [Math]::Max(0, [Math]::Min($seconds, $MaximumRetryAfterSeconds))
+    # Never retry earlier than Graph's Retry-After. A delay beyond the bounded
+    # request budget fails safely instead of clamping and hammering the service.
+    if ($seconds -gt $MaximumRetryAfterSeconds) {
+        throw (New-CloudOpsGraphException -Code 'GRAPH_THROTTLED')
+    }
+    $seconds = [Math]::Max(0, $seconds)
     return [int] [Math]::Ceiling($seconds * 1000)
 }
 
@@ -141,7 +146,7 @@ function Invoke-CloudOpsGraphRequest {
         [ValidateRange(1, 5)]
         [int] $MaximumAttempts = 3,
 
-        [ValidateRange(0, 60)]
+        [ValidateRange(0, 300)]
         [int] $MaximumRetryAfterSeconds = 10,
 
         [System.Net.Http.HttpClient] $HttpClient,
@@ -360,10 +365,19 @@ function Get-CloudOpsGraphCollection {
         [ValidateRange(1, 5)]
         [int] $MaximumAttempts = 3,
 
-        [ValidateRange(0, 60)]
+        [ValidateRange(0, 300)]
         [int] $MaximumRetryAfterSeconds = 10,
 
         [System.Net.Http.HttpClient] $HttpClient,
+
+        # Engine-owned callback receives only the completed page number, never
+        # the response/token. Used for aggregate progress on large inventories.
+        [scriptblock] $PageCompletedAction,
+
+        # Sequential nextLink traversal; spacing includes network/processing
+        # time, so slow pages incur no unnecessary extra delay.
+        [ValidateRange(0, 60000)]
+        [int] $MinimumPageIntervalMilliseconds = 0,
 
         [scriptblock] $DelayAction = {
             param([int] $Milliseconds)
@@ -377,11 +391,18 @@ function Get-CloudOpsGraphCollection {
     $visited = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::Ordinal
     )
+    $pageTimer = [System.Diagnostics.Stopwatch]::new()
 
     for ($pageNumber = 1; $pageNumber -le $MaximumPages; $pageNumber++) {
         if (-not $visited.Add($nextUri.AbsoluteUri)) {
             throw (New-CloudOpsGraphException -Code 'GRAPH_UNAVAILABLE')
         }
+
+        if ($pageTimer.IsRunning) {
+            $remaining = $MinimumPageIntervalMilliseconds - $pageTimer.ElapsedMilliseconds
+            if ($remaining -gt 0) { $null = & $DelayAction ([int] $remaining) }
+        }
+        $pageTimer.Restart()
 
         $pageParameters = @{
             AccessToken = $AccessToken
@@ -393,13 +414,15 @@ function Get-CloudOpsGraphCollection {
         }
         $page = Invoke-CloudOpsGraphRequest @pageParameters
 
-        if ($null -eq $page.PSObject.Properties['value']) {
+        if ($null -eq $page.PSObject.Properties['value'] -or $page.value -isnot [array]) {
             throw (New-CloudOpsGraphException -Code 'GRAPH_UNAVAILABLE')
         }
 
         foreach ($item in @($page.value)) {
             Write-Output $item
         }
+
+        if ($null -ne $PageCompletedAction) { $null = & $PageCompletedAction $pageNumber }
 
         $nextLinkProperty = $page.PSObject.Properties['@odata.nextLink']
         if ($null -eq $nextLinkProperty -or [string]::IsNullOrWhiteSpace([string] $nextLinkProperty.Value)) {

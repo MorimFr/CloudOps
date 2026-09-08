@@ -34,7 +34,7 @@ Single-page application (SPA)
 http://localhost:5173/auth-redirect.html
 ```
 
-Selecione **Register** e copie o **Application (client) ID**. Ele será `VITE_ENTRA_WEB_CLIENT_ID`.
+Selecione **Register** e copie o **Application (client) ID**. Ele será `VITE_ENTRA_WEB_CLIENT_ID` e também `CLOUDOPS_ENTRA_WEB_CLIENT_ID` (backend, não secreto).
 
 Em **Authentication**, confirme a plataforma SPA e o redirect URI exato. Não crie client secret para o Web e não habilite implicit grant para esta implementação; MSAL Browser usa authorization code com PKCE e popup.
 
@@ -111,7 +111,7 @@ api://<API_CLIENT_ID>/Assessment.Run
 
 Em **Manifest**, confirme que `api.requestedAccessTokenVersion` é `2`.
 
-## 4. Permissão Graph mínima na API
+## 4. Permissões Graph de leitura na API
 
 Ainda em **CloudOps API Dev**:
 
@@ -121,10 +121,13 @@ API permissions
 -> Microsoft Graph
 -> Delegated permissions
 -> User.Read
+-> User.Read.All
+-> AuditLog.Read.All
+-> LicenseAssignment.Read.All
 -> Add permissions
 ```
 
-Não adicione `User.Read.All`, `Directory.Read.All`, `Group.Read.All`, `AuditLog.Read.All` ou permissões futuras nesta etapa. Um administrador pode conceder tenant-wide admin consent conforme a política do tenant; não tente contornar consentimento, Conditional Access ou autorização do usuário.
+`User.Read` atende ao diagnóstico. As três permissões adicionais são usadas por **Mapear Usuários Inativos** e exigem consentimento administrativo. Não adicione permissões de escrita, `Directory.Read.All`, `Group.Read.All` ou permissões de ferramentas futuras. O usuário executor também precisa das funções de leitura e dos requisitos de licenciamento descritos em [Usuários inativos](inactive-users.md#permissões-e-preparação-do-tenant). Não tente contornar consentimento, Conditional Access ou autorização do usuário.
 
 ## 5. Relacionar Web e API
 
@@ -159,6 +162,10 @@ No App Registration **CloudOps API Dev**, abra **Manifest** e inclua o client ID
 ```
 
 Preserve os demais campos do manifest. Essa relação permite que o consentimento do client público e da middle-tier API seja apresentado de forma combinada quando aplicável.
+
+Os dois App Registrations da solução devem estar no mesmo tenant de origem; os usuários podem pertencer a outros tenants organizacionais. No onboarding o Web solicita `api://API_ID/.default`. O token normal continua sendo adquirido com `api://API_ID/Assessment.Run`, nunca junto com `.default`. Não adicione Graph ao Web. O modelo segue o [consentimento combinado para OBO](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-on-behalf-of-flow).
+
+`.default` é consentimento estático: o popup pode listar as quatro permissões Graph configuradas na API, mesmo ao entrar por outro card. Instalações anteriores com somente `User.Read` precisam de novo consentimento administrativo para o inventário de inativos.
 
 ### Pre-authorized application
 
@@ -205,10 +212,13 @@ Em produção, substitua o client secret por certificado ou outro mecanismo conf
 VITE_ENTRA_WEB_CLIENT_ID=<WEB_CLIENT_ID>
 VITE_ENTRA_API_SCOPE=api://<API_CLIENT_ID>/Assessment.Run
 CLOUDOPS_ENTRA_API_CLIENT_ID=<API_CLIENT_ID>
+CLOUDOPS_ENTRA_WEB_CLIENT_ID=<WEB_CLIENT_ID>
 CLOUDOPS_ENTRA_API_CLIENT_SECRET=<API_CLIENT_SECRET_VALUE>
 ```
 
 Não use o Object ID, Tenant ID ou Secret ID nesses campos.
+
+Em instalações existentes, apenas adicione a nova variável backend Web ao `.env`; não recopie o arquivo de exemplo sobre credenciais existentes. `azp` ausente/divergente passa a ser rejeitado. Essa migração é única, não por tenant.
 
 ## 8. Validar
 
@@ -222,8 +232,50 @@ Abra `http://localhost:5173`:
 2. selecione **Entrar com Microsoft**;
 3. escolha uma conta work/school;
 4. confirme **Authenticated**, Account e Tenant no Dashboard;
-5. abra **SecOps → Microsoft Graph Connectivity**;
+5. abra **SecOps → Conectividade e diagnóstico → Microsoft Graph Connectivity**;
 6. execute e baixe o ZIP;
 7. confirme `report.html` e `summary.json`.
 
+Para **SecOps → Visibilidade de segurança de identidade → Mapear Usuários Inativos**, confira `report.html` e `usuarios-inativos.csv`. Em um tenant de 200 mil usuários, planeje cerca de 41 minutos mais atrasos; mantenha a sessão aberta e baixe o ZIP após a conclusão. Nenhum grant ou `.env` real é alterado automaticamente pela ferramenta.
+
 Para validar multitenancy, repita com duas contas de tenants diferentes, se disponíveis. Cada tenant ainda precisa permitir os apps, consentir as delegated permissions exigidas e autorizar o usuário a acessar os dados solicitados.
+
+## 9. Testar tenant novo ou revogar consentimento antigo
+
+Preferência: use um tenant de laboratório que ainda não tenha consentido CloudOps. A limpeza abaixo é opcional e afeta acesso existente; faça-a apenas no laboratório sob sua administração. **Não exclua App Registrations, service principals, secrets, scopes, `knownClientApplications` ou atribuições de usuários.** Não altere a política do tenant para fazer o teste passar.
+
+### Limpeza de grants, quando necessária
+
+1. Saia do CloudOps, feche suas abas e selecione o diretório de laboratório no Entra admin center.
+2. Em **Entra ID → Enterprise apps → All applications**, localize CloudOps Web e CloudOps API pelos respectivos **Application IDs**. Não confunda com Object IDs. Anote os Object IDs locais desses dois service principals e do Microsoft Graph.
+3. Em cada app, abra **Permissions → Admin consent**. Revogue somente a concessão Web → API (`Assessment.Run`) e API → Graph (as permissões de leitura CloudOps efetivamente consentidas), usando **… → Revoke permission**. Se não existir grant, não crie um. **User consent** é apenas consultável nessa tela, não revogável pelo portal. [Administração Microsoft](https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/manage-application-permissions?pivots=portal).
+
+Para grants de usuário remanescentes, um administrador pode usar **Graph Explorer**, separado do CloudOps, autenticado explicitamente no laboratório. Essa ferramenta administrativa precisa de `DelegatedPermissionGrant.ReadWrite.All`; **não adicione essa permissão aos apps CloudOps**. Liste os grants de cada service principal:
+
+```http
+GET https://graph.microsoft.com/v1.0/servicePrincipals/<WEB_SERVICE_PRINCIPAL_OBJECT_ID>/oauth2PermissionGrants
+GET https://graph.microsoft.com/v1.0/servicePrincipals/<API_SERVICE_PRINCIPAL_OBJECT_ID>/oauth2PermissionGrants
+```
+
+Revise `clientId`, `resourceId`, `scope`, `consentType` e `principalId`: selecione apenas Web → API e API → Graph, referentes à conta de teste (`Principal`) ou concessão organizacional de laboratório (`AllPrincipals`). Não apague grants de outros usuários/recursos. Se houver páginas adicionais, revise-as também. [Listagem oficial](https://learn.microsoft.com/en-us/graph/api/serviceprincipal-list-oauth2permissiongrants?view=graph-rest-1.0).
+
+Para cada ID previamente conferido, execute individualmente, sem body:
+
+```http
+DELETE https://graph.microsoft.com/v1.0/oauth2PermissionGrants/<GRANT_ID_CONFERIDO>
+```
+
+Espere `204` e repita as consultas para conferir a ausência dos grants selecionados. A exclusão remove o grant inteiro; se ele contiver permissões além das esperadas, interrompa e revise o escopo. Access tokens já emitidos permanecem válidos até expirar: use uma sessão CloudOps nova, sem tokens antigos. A reversão exige novo consentimento autorizado. [Revogação oficial](https://learn.microsoft.com/en-us/graph/api/oauth2permissiongrant-delete?view=graph-rest-1.0).
+
+### Aceite sem concessão manual prévia
+
+1. Não use **Grant admin consent** antes do teste. Abra nova janela privada em `http://localhost:5173`.
+2. Escolha Azure → **Entrar com Microsoft** ou **Trocar conta**; selecione a conta organizacional do laboratório.
+3. Revise o popup combinado. Aceite somente os requisitos esperados da solução. Não altere `.env`, tenant ID ou configuração para cada tenant.
+4. Abra **SecOps → Conectividade e diagnóstico → Microsoft Graph Connectivity → Executar**.
+5. Se houver consentimento parcial, use **Conceder permissões**. O popup usa `prompt=consent`; a criação é repetida no máximo uma vez.
+6. Espere **Concluída / 100%**. Baixe o ZIP e confira `/me`, conta/tenant corretos, `Authentication = Delegated`, `User.Read` e indisponibilidade do segundo download.
+7. Valide armazenamento do browser sem tokens/estado OAuth persistidos. Não exporte HAR, traces ou payloads com credenciais reais.
+8. Se a política exigir administrador, espere a tela administrativa Microsoft e, quando o erro correspondente voltar à aplicação, `ADMIN_APPROVAL_REQUIRED`. Use a opção de conta administrativa; não contorne a política. Se fechar o popup, pode voltar somente cancelamento — veja [limitação de detecção](authentication.md#recovery-e-aprovação-administrativa).
+
+Se persistir erro após a repetição, revise os IDs Web/API, manifest, consent policy e propagação da configuração. O produto não concede `User.Read` via portal/Graph automaticamente, e a operação não entra em loop.

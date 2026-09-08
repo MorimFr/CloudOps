@@ -63,6 +63,7 @@ export interface RuntimeExecutionInput {
   readonly signal: AbortSignal;
   readonly onStarted: () => void;
   readonly onProgress: (stage: string, progress: number) => void;
+  readonly onPublicMetrics?: (metrics: import("@cloudops/contracts").PublicMetrics) => void;
 }
 
 export interface RuntimeExecutionResult {
@@ -212,13 +213,14 @@ export class PowerShellRuntime implements AssessmentRuntime {
       return Promise.reject(new PowerShellRuntimeError("ASSESSMENT_CANCELLED"));
     }
 
-    const { assessment, signal, onStarted, onProgress } = input;
+    const { assessment, signal, onStarted, onProgress, onPublicMetrics } = input;
     return this.#executeSerializedContext(
       assessment,
       signal,
       onStarted,
       onProgress,
       contextBuffer,
+      onPublicMetrics,
     );
   }
 
@@ -228,6 +230,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
     onStarted: () => void,
     onProgress: (stage: string, progress: number) => void,
     contextBuffer: Buffer,
+    onPublicMetrics: RuntimeExecutionInput["onPublicMetrics"],
   ): Promise<RuntimeExecutionResult> {
     return new Promise<RuntimeExecutionResult>((resolve, reject) => {
       const stdoutChunks: Buffer[] = [];
@@ -312,6 +315,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
             onProgress(parsed.data.stage, parsed.data.progress);
           } else if (parsed.data.type === "publicMetrics") {
             publicMetrics = parsed.data.publicMetrics;
+            onPublicMetrics?.(structuredClone(publicMetrics));
           } else {
             // Assessment-authored details are deliberately discarded. Only the
             // fixed, public runtime failure code crosses this trust boundary.

@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.js";
 
 describe("API configuration", () => {
+  it("reads the expected Web client ID only from backend configuration", () => {
+    const id = "66666666-6666-4666-8666-666666666666";
+    expect(loadConfig({ CLOUDOPS_ENTRA_WEB_CLIENT_ID: id }).entraWebClientId).toBe(id);
+    expect(loadConfig({ VITE_ENTRA_WEB_CLIENT_ID: id }).entraWebClientId).toBe("");
+  });
   it("normalizes one explicit CORS origin", () => {
     const config = loadConfig({
       NODE_ENV: "development",
