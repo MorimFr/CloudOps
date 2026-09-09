@@ -1,5 +1,54 @@
 # Validação — Mapear Usuários Inativos e histórico da foundation
 
+## Plugins autodescritivos — baseline e escopo — 2026-09-08
+
+Antes das alterações foram lidos README, toda a documentação, contratos, registries, engine compartilhado, os três assessments, catálogo/UI e testes. O worktree estava limpo. Baseline executado: **146 testes unitários** (contracts 8, API 85, Web 53), **18 testes UI**, **4 testes HTML/print** e validadores PowerShell Graph/Hello World/Inativos aprovados. No Windows, a primeira rodada de UI passou mas seu teardown ficou preso no sandbox; Docker e o validador CLI também exigiram execução fora do sandbox. As rodadas finais usam as permissões adequadas, sem relaxar o produto.
+
+Esta entrega substitui exclusivamente a lista de registrations por manifests versionados e discovery no startup, acrescentando display opcional e testes/documentação. Os scripts/módulos de Inativos, relatório/classificação, Graph Connectivity `/me`, Hello World, módulos compartilhados, ExecutionPanel, autenticação, OBO, ownership e ciclo de artefatos não foram modificados.
+
+### Revisão de segurança dos manifests
+
+| Pergunta | Resultado |
+| --- | --- |
+| Um manifest pode escapar do engine root? | Não: paths relativos portáveis, contenção realpath e rejeição de links/traversal/arquivos não regulares. |
+| O manifest pode executar shell arbitrário? | Não: é JSON estrito, discovery não executa código e o runtime continua `shell:false`. O PowerShell do deployment é código confiável revisado, não sandbox de terceiros. |
+| O frontend pode escolher entrypoint? | Não: envia somente assessmentId; path fica no registry interno. |
+| Metadata pode injetar HTML? | Não: display recusa markup; ícones são allowlist de SVGs locais e textos são escapados pelo React. |
+| Pode adicionar Graph scope arbitrário? | Não: somente o enum existente de quatro permissões; grants/OBO continuam exigidos. |
+| Pode expor filesystem pelo catálogo/erro? | Não: projeção pública explícita; erros contêm apenas diretório relativo seguro, campo conhecido e motivo fixo. |
+| Manifest inválido pode ser ignorado? | Não: qualquer manifest presente e inválido impede startup, inclusive em ferramenta desabilitada. |
+
+Plugins são configuração/código do build confiável. Não há upload, watcher, instalação runtime, database ou alteração de App Registrations. Manter o deployment imutável é obrigatório; validar metadata não substitui revisão do script. Leitura de configuração estática não altera Zero Retention.
+
+### Resultado final da migração
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm install` | Aprovado, dependências já atualizadas, zero vulnerabilidades; nenhuma alteração efetiva no lockfile. |
+| `npm run typecheck` | Aprovado. |
+| `npm run lint` | Aprovado, zero warnings de lint. |
+| `npm run test` | **232 aprovados, 0 falhas**: contracts 36, API 142, Web 54. Repetido em Windows e Linux/container. |
+| `npm run build` | Aprovado no host e na imagem; aviso preexistente de chunk frontend >500 kB permanece. |
+| `npm run assessments:validate` | **3 assessment manifests valid**. Também aprovado no CLI compilado da imagem runtime. |
+| `npm run assessments:list` | Somente IDs/provider/domain/module/runtime/visibility dos três assessments; nenhum path absoluto, secret ou token. |
+| `npm run test:ui` | **18 aprovados**, incluindo ícone/tags/source dinâmicos em 1440/1100/390 px e regressões do drawer/consent/sidebar. |
+| `npm run test:reports` | **4 aprovados**, HTML offline em 1440/768/390 px e impressão. |
+| Compose `build` e `up -d --wait` | Aprovados com projeto/overlay isolados e IDs/secret sintéticos, sem usar `.env`. |
+| Runtime real da imagem | Node 24.20.0, PowerShell 7.6.5, UID 1000, filesystem read-only, health 200, catálogo anônimo 401. Web 200. |
+| Validadores PowerShell Graph/Hello World/Inativos | Todos aprovados em containers read-only, sem rede e com dados sintéticos. |
+| `npm run test:e2e:local` | Aprovado: JWT sintético local → HTTP autenticado → discovery real → PowerShell real → ZIP em RAM → download-once. Sem rede externa. |
+| Template e diff | JSON documental validado pelo schema e entrypoint documental validado pelo parser PowerShell sem execução; `git diff --check` aprovado; nenhuma mudança de lógica em `.ps1`/`.psm1`. |
+
+O teste de aceitação adiciona uma pasta temporária, inicia a API, consulta catálogo autenticado, executa o ID e confere o path/contexto entregues ao runtime. Depois remove manifest/pasta e reinicia: catálogo vazio e POST 404. Não há watcher. A fixture do script contém `throw`, confirmando que discovery nunca a executa. Testes de paths cobrem Windows/Linux, symlinks de arquivo/pasta/manifest, junctions quando aplicável e hard links; 100 manifests pequenos são descobertos sem editar registry. Os três manifests reais preservam nomes, descrições, módulos, permissões, timeouts e concorrência anteriores.
+
+Inativos nesta rodada: **10.000 contas sintéticas, 20 páginas e 22 consultas**, ZIP de 63.283 bytes, processamento 11,5 s, pico de working set 311,4 MiB. Rede/pacing simulados; não é benchmark do Graph real. O teste anterior de 200.000 contas permanece registrado abaixo; não foi necessário alterar ou repetir a lógica para esta migração.
+
+Avisos não bloqueantes: chunk frontend >500 kB e npm solicitando revisão explícita do postinstall de `esbuild`; não foi concedida aprovação adicional a scripts de dependências. O build e os testes funcionaram. Uma inspeção Docker inicialmente tentou ler health do Web, que não possui healthcheck próprio; a verificação foi corrigida para estado do container e resposta HTTP. O runtime possui healthcheck e ficou healthy.
+
+Após as verificações, foram removidos somente os dois containers e a rede do projeto `cloudops-plugin-validation`, recriáveis pelos comandos documentados. As imagens `cloudops-plugin-runtime:validation` e `cloudops-plugin-development:validation` permanecem locais; imagens/serviços do projeto normal não foram substituídos. O harness de JWT sintético está ausente da imagem runtime. Não houve leitura de tenant real, alteração de grants/App Registrations, `.env`, commit, push ou PR. Para carregar a migração no ambiente normal, reconstruir/recriar em janela sem execução ativa.
+
+Na conferência de fechamento apareceu uma alteração externa de whitespace: um espaço antes de `Set-StrictMode` na primeira linha de `engine/inactive-users/CloudOps.InactiveUsers.psm1`. Foi preservada e não pertence à migração. O diff ignorando whitespace permanece vazio para o módulo; as imagens/testes PowerShell foram construídos antes dessa edição, sem diferença funcional.
+
 ## Revisão da classificação e evidências — 2026-09-08
 
 Classificação v2: histórico de atividade omitido/nulo na consulta selecionada usa a carência de criação, sem afirmar “nunca entrou”; histórico legado de tentativas antigas recebe evidência separada; tentativas recentes sem campo de sucesso continuam indeterminadas. Último sucesso conhecido mantém prioridade. Criação ausente/malformada não invalida sucesso utilizável; dados contraditórios e datas realmente futuras permanecem indeterminados. Corte UTC fixo e instante de observação separados corrigem logins ocorridos durante a coleta.

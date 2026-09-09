@@ -29,6 +29,8 @@ O arquivo explicitamente escolhido pelo usuário no browser é a única persist�
 
 Código, documentação, registry e configuração estáticos fazem parte da imagem e não são dados de assessment. O `.env` local com client secret é uma credencial operacional sob responsabilidade do desenvolvedor, ignorada pelo Git; ele nunca é enviado ao Web.
 
+Isso inclui `engine/<id>/assessment.json`: configuração estática de produto lida uma vez no startup, sem tokens, tenant data ou resultados. Discovery não cria arquivo, cache persistente ou índice e não executa scripts. Os arquivos temporários dos testes de discovery contêm exclusivamente manifests/scripts sintéticos, são isolados fora do engine real e removidos ao final. Não se aplica esse mecanismo a dados de cliente.
+
 ## Controles
 
 1. MSAL Browser LTS usa `BrowserCacheLocation.MemoryStorage` para tokens e cache temporário; migração de cache e cookies estão desabilitados.

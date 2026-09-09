@@ -1,0 +1,17 @@
+# Test-only overlay: synthetic configuration, isolated image tags and loopback ports.
+# Use with --project-name cloudops-plugin-validation --env-file .env.example.
+# Base interpolation still needs synthetic Entra variables; see local-development.md.
+services:
+  cloudops-runtime:
+    image: cloudops-plugin-runtime:validation
+    ports: !override
+      - "127.0.0.1:3011:3000"
+    environment:
+      PORT: 3000
+      WEB_ORIGIN: http://localhost:5181
+  cloudops-web:
+    image: cloudops-plugin-development:validation
+    ports: !override
+      - "127.0.0.1:5181:5173"
+    environment:
+      VITE_CLOUDOPS_API_URL: http://localhost:3011

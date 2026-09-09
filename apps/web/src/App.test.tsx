@@ -171,6 +171,23 @@ describe("CloudOps multicloud application", () => {
     expect(screen.queryByRole("heading", { name: "Proteção e resposta" })).not.toBeInTheDocument();
   });
 
+  it("renders and executes a new API-provided plugin with display metadata without an ID-specific component", async () => {
+    const plugin = { ...graphAssessment, id: "brand-new-plugin", name: "New manifest tool", assessmentOrder: 23,
+      moduleId: "custom-module", moduleName: "Module from API", moduleOrder: 1,
+      display: { icon: "network" as const, tags: ["Inventory", "Ownership"], source: "Synthetic directory · Read only" } };
+    mockedListAssessments.mockResolvedValueOnce([plugin]);
+    const { container } = renderApp("/azure/secops");
+    await screen.findByRole("heading", { name: plugin.name });
+    expect(screen.getByRole("heading", { name: "Module from API" })).toBeVisible();
+    expect(screen.getByLabelText("Tags da ferramenta")).toHaveTextContent("Inventory");
+    expect(screen.getByText(plugin.display.source)).toBeVisible();
+    expect(container.querySelector(".assessment-icon svg")).toHaveAttribute("data-icon", "network");
+    fireEvent.click(screen.getByRole("button", { name: `Executar ${plugin.name}` }));
+    await waitFor(() => expect(mockedCreateExecution).toHaveBeenCalledWith(
+      { assessmentId: "brand-new-plugin", options: {} }, getToken, expect.anything(),
+    ));
+  });
+
   it("offers separate consent recovery and refreshes the API token before a single retry", async () => {
     const requestConsent = vi.fn(async () => undefined);
     mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "cloudops.assessment.v1",
+  "id": "inactive-users",
+  "name": "Mapear Usuários Inativos",
+  "description": "Identifica contas sem login bem-sucedido há pelo menos 90 dias. Gera relatório executivo HTML e CSV de inativos; contas novas sem login aguardam 90 dias desde a criação.",
+  "provider": "azure",
+  "domain": "secops",
+  "moduleId": "identity-visibility",
+  "assessmentOrder": 1,
+  "enabled": true,
+  "visibility": "public",
+  "engine": {
+    "runtime": "powershell",
+    "entrypoint": "Invoke-Assessment.ps1",
+    "timeoutSeconds": 3300,
+    "maxConcurrentExecutions": 1
+  },
+  "auth": {
+    "provider": "microsoft-graph",
+    "permissions": [
+      "User.Read",
+      "User.Read.All",
+      "AuditLog.Read.All",
+      "LicenseAssignment.Read.All"
+    ],
+    "adminConsentRequired": true
+  },
+  "display": {
+    "icon": "users",
+    "tags": [
+      "Identity",
+      "Lifecycle",
+      "Access"
+    ],
+    "source": "Microsoft Entra ID · Sign-in activity"
+  }
+}

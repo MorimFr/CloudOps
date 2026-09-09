@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { AssessmentDisplaySchema } from "./assessment-display.js";
 
 export const AssessmentIdSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/);
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 export type AssessmentId = z.infer<typeof AssessmentIdSchema>;
 
@@ -92,6 +93,7 @@ export const AssessmentSummarySchema = z
     requiredAuthProvider: AssessmentAuthProviderSchema,
     requiredPermissions: z.array(GraphPermissionSchema).max(16).readonly(),
     adminConsentRequired: z.boolean(),
+    display: AssessmentDisplaySchema.optional(),
   })
   .strict();
 

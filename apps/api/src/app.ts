@@ -78,6 +78,8 @@ export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   const config = mergedConfig(options.config);
+  // Fail closed before allocating Fastify/auth/runtime resources or listening.
+  const registry = options.registry ?? createDefaultAssessmentRegistry(config.engineRoot);
   const app = Fastify({
     logger:
       options.logger === undefined
@@ -115,8 +117,6 @@ export async function buildApp(
     return payload;
   });
 
-  const registry =
-    options.registry ?? createDefaultAssessmentRegistry(config.engineRoot);
   const runtime =
     options.runtime ??
     new PowerShellRuntime({

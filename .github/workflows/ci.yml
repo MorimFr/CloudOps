@@ -37,6 +37,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Validate trusted assessment manifests and entrypoints
+        run: npm run assessments:validate
+
+      - name: List discovered assessment metadata
+        run: npm run assessments:list
+
       - name: Unit tests
         run: npm run test
 
@@ -100,6 +106,14 @@ jobs:
           --env PSModuleAnalysisCachePath=/dev/null
           cloudops-development:ci pwsh -NoLogo -NoProfile -NonInteractive
           -File engine/tests/Validate-InactiveUsers.ps1 -ScaleUsers 10000
+
+      - name: Authenticated HTTP Hello World E2E with synthetic local identity
+        run: >-
+          docker run --rm --network none
+          --cap-drop ALL --security-opt no-new-privileges:true
+          --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m
+          --env PSModuleAnalysisCachePath=/dev/null
+          cloudops-development:ci npm run test:e2e:local
 
       - name: Offline report responsive and print validation (synthetic)
         run: npm run test:reports

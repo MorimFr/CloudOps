@@ -65,6 +65,8 @@ adminConsentRequired
 
 `apps/api/src/services/module-registry.ts` centraliza ID, nome, descrição, ordem, provider e domain. Cada assessment registra apenas `moduleId` e `assessmentOrder`. A API resolve/injeta os demais campos públicos; módulo ausente, ID duplicado ou provider/domain incompatível falham na validação. Ordens são inteiros entre 1 e 999.
 
+Agora esses dois campos, junto aos demais metadados da ferramenta, são declarados em `engine/<id>/assessment.json`. A descoberta de manifests no startup substitui a lista hardcoded de assessments, não o ModuleRegistry. `display` opcional fornece ícone aprovado, tags e fonte textual ao card genérico; nenhuma apresentação depende de um ID específico. Manifest não habilita uma integração AWS/GCP inexistente nem muda a autenticação do produto.
+
 `AssessmentCatalogSchema` rejeita IDs de assessments duplicados e metadados divergentes para o mesmo módulo. `groupAssessmentsByModule` usa somente a resposta validada, ordenando módulos por `moduleOrder`/ID e cards por `assessmentOrder`/ID. O ID desempata de forma determinística. Módulos sem cards visíveis são omitidos.
 
 Taxonomia atual, **sem registrar funcionalidades futuras**:

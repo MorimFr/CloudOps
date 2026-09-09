@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "cloudops.assessment.v1",
+  "id": "hello-world",
+  "name": "Hello World Assessment",
+  "description": "Validates the in-memory CloudOps execution and report pipeline.",
+  "provider": "azure",
+  "domain": "devops",
+  "moduleId": "runtime-validation",
+  "assessmentOrder": 1,
+  "enabled": true,
+  "visibility": "development",
+  "engine": {
+    "runtime": "powershell",
+    "entrypoint": "Invoke-Assessment.ps1",
+    "timeoutSeconds": 30
+  },
+  "auth": {
+    "provider": "none",
+    "permissions": [],
+    "adminConsentRequired": false
+  },
+  "display": {
+    "icon": "code",
+    "tags": [
+      "Runtime",
+      "Development"
+    ],
+    "source": "Validação de runtime · desenvolvimento"
+  }
+}

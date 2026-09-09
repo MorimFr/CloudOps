@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "cloudops.assessment.v1",
+  "id": "example-security-check",
+  "name": "Example Security Check",
+  "description": "Example only.",
+  "provider": "azure",
+  "domain": "secops",
+  "moduleId": "security-assessments",
+  "assessmentOrder": 50,
+  "enabled": true,
+  "visibility": "development",
+  "engine": {
+    "runtime": "powershell",
+    "entrypoint": "Invoke-Assessment.ps1",
+    "timeoutSeconds": 60,
+    "maxConcurrentExecutions": 1
+  },
+  "auth": {
+    "provider": "microsoft-graph",
+    "permissions": ["User.Read"],
+    "adminConsentRequired": false
+  },
+  "display": {
+    "icon": "shield",
+    "tags": ["Example", "Security"],
+    "source": "Microsoft Graph · Delegated"
+  }
+}

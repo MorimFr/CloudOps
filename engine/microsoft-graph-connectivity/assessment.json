@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "cloudops.assessment.v1",
+  "id": "microsoft-graph-connectivity",
+  "name": "Microsoft Graph Connectivity",
+  "description": "Validates delegated Microsoft Graph access for the connected tenant.",
+  "provider": "azure",
+  "domain": "secops",
+  "moduleId": "connectivity-diagnostics",
+  "assessmentOrder": 1,
+  "enabled": true,
+  "visibility": "public",
+  "engine": {
+    "runtime": "powershell",
+    "entrypoint": "Invoke-Assessment.ps1",
+    "timeoutSeconds": 60
+  },
+  "auth": {
+    "provider": "microsoft-graph",
+    "permissions": [
+      "User.Read"
+    ],
+    "adminConsentRequired": false
+  },
+  "display": {
+    "icon": "link",
+    "tags": [
+      "Graph",
+      "Connectivity"
+    ],
+    "source": "Microsoft Graph · delegated"
+  }
+}

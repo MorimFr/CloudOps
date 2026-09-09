@@ -1,4 +1,6 @@
 /* Provider accents are deliberately scoped away from the approved execution drawer. */
+.workspace-assessments .assessment-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin: .65rem 0; }
+.workspace-assessments .assessment-tags span { padding: .15rem .4rem; border: 1px solid var(--provider-border); border-radius: 5px; color: var(--muted); font-size: .66rem; overflow-wrap: anywhere; }
 .provider-card .provider-monogram,
 .provider-sidebar .provider-monogram,
 .workspace-main .provider-monogram {

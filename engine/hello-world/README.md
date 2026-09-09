@@ -2,6 +2,8 @@
 
 Assessment fictício que valida o caminho real `Node.js -> pwsh -> Node.js` sem chamar Microsoft Graph.
 
+Registrado automaticamente pelo `assessment.json`: `azure/devops/runtime-validation`, visibilidade `development`, auth `none`, timeout 30 segundos. Sem override de concorrência: usa o limite global. O script e seu protocolo não foram alterados pela migração para plugins. Valide a declaração com `npm run assessments:validate`; E2E HTTP sintético com `npm run test:e2e:local` (PowerShell 7 necessário).
+
 Entrada JSON em `stdin`:
 
 ```json

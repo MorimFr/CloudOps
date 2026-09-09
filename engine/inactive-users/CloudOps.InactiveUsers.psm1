@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+ Set-StrictMode -Version Latest
 
 Import-Module (Join-Path $PSScriptRoot '../shared/CloudOps.Graph.psm1') -DisableNameChecking
 Import-Module (Join-Path $PSScriptRoot '../shared/CloudOps.Execution.psm1') -DisableNameChecking

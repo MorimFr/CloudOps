@@ -10,6 +10,7 @@ Esta etapa entrega:
 - onboarding/reconsentimento combinado, separado do token normal `Assessment.Run`;
 - validação criptográfica do access token da CloudOps API, incluindo `azp` do Web autorizado;
 - catálogo `provider → domain → module → assessment`, cards compactos e temas Azure/AWS/GCP;
+- assessments autodescritivos: `engine/<id>/assessment.json`, schema estrito e descoberta no startup, sem lista duplicada no backend;
 - diálogo de consentimento separado, com repetição única e estado de aprovação administrativa;
 - On-Behalf-Of (OBO) para Microsoft Graph;
 - assessment real `microsoft-graph-connectivity`, com delegated `User.Read`;
@@ -89,6 +90,8 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run assessments:validate
+npm run assessments:list
 npm run test:ui
 ```
 
@@ -118,6 +121,22 @@ Os testes visuais usam Edge instalado no Windows; em Linux/macOS, instale Chromi
 - o Compose não possui volume de dados e o runtime usa filesystem read-only.
 
 O arquivo que o usuário escolhe baixar é a única persistência intencional.
+
+Os manifests são configuração estática e confiável do produto, não dados de cliente. Sua leitura não muda o tratamento efêmero de tokens, respostas Graph ou artefatos.
+
+## Adicionar uma ferramenta
+
+Antes: criar PowerShell e editar o registry manualmente. Agora: criar `engine/<id>/assessment.json`, `Invoke-Assessment.ps1`, README e testes; validar e reiniciar/reimplantar. O card é gerado no módulo declarado, **sem editar o registry, App.tsx ou JSX de catálogo**. Em Docker, os arquivos precisam entrar na nova imagem.
+
+```powershell
+npm run assessments:validate
+npm run assessments:list
+npm run test
+```
+
+O startup examina somente pastas imediatamente abaixo de `engine/`. Pastas sem manifest são ignoradas; manifest inválido impede a API de iniciar, com diagnóstico sanitizado. Módulos continuam centralizados. Não há watcher, upload ou instalação de código em runtime. Veja o [fluxo e exemplo completo](docs/assessment-development.md) e o [template somente documental](docs/examples/assessment.json).
+
+Os três assessments mantêm suas permissões, scripts e limites anteriores. Esta migração **não exige mudanças nos App Registrations ou novo consentimento**. `npm run test:e2e:local` valida Hello World com identidade sintética em memória e PowerShell real, sem Entra/Graph; exige `pwsh` no host ou imagem development.
 
 ## Estrutura
 

@@ -102,6 +102,8 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run assessments:validate
+npm run assessments:list
 npm run test:ui
 ```
 
@@ -116,6 +118,35 @@ docker build --file docker/runtime.Dockerfile --target development --tag cloudop
 docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env HOME=/tmp/cloudops-home cloudops-development:local pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-GraphModule.ps1
 docker run --rm --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env HOME=/tmp/cloudops-home cloudops-development:local pwsh -NoLogo -NoProfile -NonInteractive -File engine/tests/Validate-HelloWorld.ps1
 ```
+
+### Hello World HTTP sem credenciais reais
+
+`npm run test:e2e:local` cria uma API local com chaves RSA e identidade sintéticas somente em RAM, usa a validação JWT real com JWKS local de teste, descobre os manifests e executa Hello World com PowerShell real. Confere autenticação, catálogo, progresso, ZIP e download-once. Não chama Entra/Graph; o harness não é incluído no build de produção. Não substitui o aceite Entra/OBO em tenant real.
+
+```powershell
+docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges:true --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m --env PSModuleAnalysisCachePath=/dev/null cloudops-development:local npm run test:e2e:local
+```
+
+Essa imagem de testes permite escrever os arquivos de compilação TypeScript estáticos. O Compose da aplicação continua read-only; os validadores PowerShell acima também usam read-only e verificam ausência de gravações de assessment.
+
+### Validar Compose sem usar `.env` ou imagens do ambiente real
+
+Para validar somente build/startup/health, existe `docker/compose.validation.yml`, overlay de testes com nomes de imagens próprios e portas loopback 3011/5181. Exige Compose com suporte a `!override` (2.24.4+). Abra um terminal descartável na raiz do repositório e configure **somente esses valores sintéticos**:
+
+```powershell
+$env:CLOUDOPS_ENTRA_API_CLIENT_ID = '11111111-1111-4111-8111-111111111111'
+$env:CLOUDOPS_ENTRA_WEB_CLIENT_ID = '22222222-2222-4222-8222-222222222222'
+$env:CLOUDOPS_ENTRA_API_CLIENT_SECRET = 'synthetic-validation-not-a-credential'
+$env:VITE_ENTRA_WEB_CLIENT_ID = '22222222-2222-4222-8222-222222222222'
+$env:VITE_ENTRA_API_SCOPE = 'api://11111111-1111-4111-8111-111111111111/Assessment.Run'
+$validationCompose = @('--project-name', 'cloudops-plugin-validation', '--env-file', '.env.example', '-f', 'docker-compose.yml', '-f', 'docker/compose.validation.yml')
+docker compose @validationCompose build
+docker compose @validationCompose up -d --wait --wait-timeout 60
+docker compose @validationCompose ps
+docker compose @validationCompose down
+```
+
+Não faça login nesse ambiente: IDs/secret são fictícios. Use `http://localhost:3011/api/v1/health` e `http://localhost:5181` apenas para conferir disponibilidade; catálogo sem autenticação deve responder 401. O `down` acima remove somente containers/rede desse projeto isolado; as imagens de validação permanecem locais. O `.env` real e as imagens `cloudops-runtime:local`/`cloudops-development:local` não são substituídos. Para login real, use o Compose normal com sua configuração existente, após rebuild em janela sem execução ativa.
 
 ## Mapear Usuários Inativos
 

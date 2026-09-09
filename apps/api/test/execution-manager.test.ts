@@ -6,7 +6,8 @@ import { createAuthenticatedPrincipal } from "../src/auth/principal.js";
 import type { GraphTokenBroker } from "../src/auth/obo-service.js";
 import type { ValidatedApiToken } from "../src/auth/token-validator.js";
 import { CloudOpsError } from "../src/errors.js";
-import { AssessmentRegistry } from "../src/services/assessment-registry.js";
+import { AssessmentRegistry, createDefaultAssessmentRegistry } from "../src/services/assessment-registry.js";
+import { discoverAssessmentManifests, defaultEngineRoot } from "../src/services/assessment-discovery.js";
 import { ExecutionManager } from "../src/services/execution-manager.js";
 import type {
   AssessmentRuntime,
@@ -30,48 +31,12 @@ const authenticatedB: ValidatedApiToken = Object.freeze({
   principal: createAuthenticatedPrincipal(TEST_TENANT_B, TEST_OBJECT_B),
 });
 
-function registration() {
-  return {
-    id: "hello-world" as const,
-    name: "Hello World Assessment",
-    scriptRelativePath: path.join(
-      "hello-world",
-      "Invoke-Assessment.ps1",
-    ),
-    enabled: true,
-    timeoutMs: 30_000,
-    provider: "azure" as const,
-    domain: "devops" as const,
-    moduleId: "runtime-validation",
-    assessmentOrder: 1,
-    visibility: "development" as const,
-    requiredAuthProvider: "none" as const,
-    requiredPermissions: [] as const,
-    adminConsentRequired: false,
-  };
-}
-
 function registry(): AssessmentRegistry {
-  return new AssessmentRegistry(path.resolve("engine"), [registration()]);
+  return new AssessmentRegistry(discoverAssessmentManifests().filter((item) => item.manifest.id === "hello-world"));
 }
 
 function graphRegistry(): AssessmentRegistry {
-  return new AssessmentRegistry(path.resolve("engine"), [
-    {
-      ...registration(),
-      id: "microsoft-graph-connectivity",
-      name: "Microsoft Graph Connectivity",
-      scriptRelativePath: path.join(
-        "microsoft-graph-connectivity",
-        "Invoke-Assessment.ps1",
-      ),
-      domain: "secops",
-      moduleId: "connectivity-diagnostics",
-      visibility: "public",
-      requiredAuthProvider: "microsoft-graph",
-      requiredPermissions: ["User.Read"],
-    },
-  ]);
+  return new AssessmentRegistry(discoverAssessmentManifests().filter((item) => item.manifest.id === "microsoft-graph-connectivity"));
 }
 
 const managers: ExecutionManager[] = [];
@@ -91,7 +56,7 @@ afterEach(() => {
 describe("ExecutionManager", () => {
   it("reserves the long-inventory slot across tenants before awaiting OBO", async () => {
     const manager = track(new ExecutionManager({
-      registry: new AssessmentRegistry(path.resolve("engine")),
+      registry: createDefaultAssessmentRegistry(),
       runtime: { isAvailable: async () => true, execute: () => new Promise(() => undefined) },
       graphTokenBroker: { acquireToken: async () => ({ accessToken: "synthetic-graph-token" }) },
     }));
@@ -172,7 +137,7 @@ describe("ExecutionManager", () => {
     );
     await waitForCondition(() => runtime.calls.length === 1);
     expect(runtime.calls[0]?.assessment.scriptPath).toBe(
-      path.resolve("engine", "hello-world", "Invoke-Assessment.ps1"),
+      path.join(defaultEngineRoot(), "hello-world", "Invoke-Assessment.ps1"),
     );
   });
 

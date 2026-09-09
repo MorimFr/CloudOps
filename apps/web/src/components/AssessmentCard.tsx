@@ -1,5 +1,6 @@
 import type { AssessmentSummary } from "@cloudops/contracts";
 import type { PermissionState } from "../auth/consent";
+import { AssessmentIcon } from "./AssessmentIcon";
 
 interface AssessmentCardProps {
   readonly assessment: AssessmentSummary;
@@ -34,10 +35,7 @@ export function AssessmentCard({
     >
       <div className="card-topline">
         <span className="assessment-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M12 2.5 20 6v5.2c0 5.1-3.3 8.9-8 10.3-4.7-1.4-8-5.2-8-10.3V6l8-3.5Z" />
-            <path d="m8.5 12 2.2 2.2 4.8-5" />
-          </svg>
+          <AssessmentIcon icon={assessment.display?.icon} domain={assessment.domain} />
         </span>
         <span
           className={`availability ${assessment.enabled ? "available" : "unavailable"}`}
@@ -53,6 +51,11 @@ export function AssessmentCard({
             "Execute esta avaliação pelo pipeline seguro e efêmero do CloudOps."}
         </p>
 
+        {!!assessment.display?.tags?.length && (
+          <div className="assessment-tags" aria-label="Tags da ferramenta">
+            {assessment.display.tags.map((tag) => <span key={tag}>{tag}</span>)}
+          </div>
+        )}
         {assessment.requiredPermissions.length > 0 && (
           <div className="permission-list" aria-label="Permissões necessárias">
               {assessment.requiredPermissions.map((permission) => (
@@ -64,7 +67,7 @@ export function AssessmentCard({
       </div>
 
       <div className="card-footer">
-        <span className="card-source">{assessmentKind(assessment)}</span>
+        <span className="card-source">{assessment.display?.source ?? assessmentKind(assessment)}</span>
         <button
           id={`execute-${assessment.id}`}
           className="button button-secondary"

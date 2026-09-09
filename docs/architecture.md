@@ -64,13 +64,27 @@ Um restart perde todas as executions por design.
 
 ## Registry e OBO
 
-O Assessment Registry é a única origem para:
+Antes, metadados de cada ferramenta eram uma lista fixa no código. Agora a declaração oficial de cada assessment é `engine/<id>/assessment.json`; não existe uma segunda lista de registrations. No startup:
+
+```text
+loadConfig → engineRoot → discovery de pastas imediatas
+  → schema estrito e arquivos seguros → validação do ModuleRegistry
+  → AssessmentRegistry → Fastify → catálogo autenticado → card genérico
+```
+
+`assessment-discovery.ts` lê JSON limitado a 64 KiB, valida versão, ID/pasta e entrypoint. Não abre o conteúdo dos scripts nem executa/importa PowerShell. `AssessmentManifestSchema` reside em contracts. `AssessmentRegistry` recebe os resultados validados, confere módulos, constrói o registro interno e projeta somente metadados públicos. A descoberta termina antes da criação dos serviços da API; qualquer manifest inválido impede o startup.
+
+O registry resultante resolve:
 
 - script aprovado;
 - provider/domain/module/visibility e ordem;
 - auth provider;
 - delegated Graph permissions;
 - timeout/habilitação.
+
+`timeoutSeconds` vira milissegundos somente no registro interno; concorrência opcional preserva o fallback global. `ModuleRegistry` continua central: nomes, descrição e ordem dos módulos não pertencem aos manifests. O frontend recebe `display` opcional (ícone por allowlist, tags e fonte textual), sem entrypoint, paths, timeout ou configuração interna. Nenhum assessment ID é usado para escolher sua apresentação.
+
+A descoberta ocorre uma vez por inicialização, ordenada por nome da pasta, sem recursão de manifests, watcher, banco ou instalação dinâmica. Uma pasta nova/removida só altera o catálogo após restart; imagens Docker precisam de rebuild/redeploy. `CLOUDOPS_ENGINE_ROOT` é configuração do servidor, nunca parâmetro do cliente; testes usam raízes temporárias sintéticas.
 
 O cliente envia apenas `assessmentId` e `options`. Paths, commands, tenant, access token e Graph scopes não são aceitos.
 
@@ -114,5 +128,8 @@ O status público carrega somente metadados operacionais e `publicMetrics` agreg
 - O runtime Compose é read-only, sem capabilities e sem volumes de dados.
 - `/tmp` é tmpfs pequeno para necessidades internas do runtime, nunca fallback de assessment.
 - Wipe de memória gerenciada é best-effort, não garantia criptográfica.
+- Manifests/scripts pertencem ao build confiável e imutável. Schema valida declaração e contenção de paths, não a segurança do código PowerShell. Revisão e testes do código continuam obrigatórios; não é sandbox para plugins de terceiros.
+- Entry points são `.ps1` regulares, relativos e contidos na própria pasta e no engine root; caminhos absolutos, traversal, argumentos de shell, symlinks/junctions e hard links de arquivos são rejeitados. Nenhum comando é construído a partir de texto do manifest; o runtime existente mantém `shell:false`.
+- Erros de manifest mostram somente path relativo seguro, campo conhecido e motivo fixo; não refletem valores, chaves desconhecidas, filesystem absoluto ou stacks em produção.
 
 Para detalhes, consulte [authentication.md](authentication.md), [microsoft-graph.md](microsoft-graph.md) e [zero-retention.md](zero-retention.md).

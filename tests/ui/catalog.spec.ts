@@ -14,6 +14,7 @@ const tool = {
   id: "synthetic-connectivity", name: "Microsoft Graph Connectivity", description: "Valida o acesso delegado e a conectividade com Microsoft Graph.",
   enabled: true, provider: "azure", domain: "secops", visibility: "public", requiredAuthProvider: "microsoft-graph", requiredPermissions: ["User.Read"], adminConsentRequired: false,
   moduleId: "synthetic-diagnostics", moduleName: "Conectividade e diagnóstico", moduleDescription: "Validação técnica das conexões e do acesso delegado. Não representa uma avaliação de segurança.", moduleOrder: 4, assessmentOrder: 1,
+  display: { icon: "network", tags: ["Synthetic", "Discovery"], source: "Fonte sintética do manifest" },
 };
 const catalog = [tool, ...[2, 3].map((index) => ({ ...tool, id: `synthetic-tool-${index}`, name: `Ferramenta sintética ${index}`, assessmentOrder: index }))];
 const executionId = "EXE-550e8400-e29b-41d4-a716-446655440000";
@@ -55,6 +56,10 @@ for (const [width, columns] of [[1440, 3], [1100, 2], [390, 1]] as const) {
     const requests = await setup(page);
     await page.goto("/azure/secops");
     await expect(page.locator(".assessment-card")).toHaveCount(3);
+    const card = page.locator(".assessment-card").first();
+    await expect(card.locator('svg[data-icon="network"]')).toBeVisible();
+    await expect(card.getByText("Discovery", { exact: true })).toBeVisible();
+    await expect(card.getByText("Fonte sintética do manifest")).toBeVisible();
     const tracks = await page.locator(".assessment-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" "));
     expect(tracks).toHaveLength(columns);
     const first = await page.locator(".assessment-card").first().boundingBox();

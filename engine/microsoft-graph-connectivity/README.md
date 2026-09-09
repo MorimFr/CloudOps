@@ -1,5 +1,7 @@
 # Microsoft Graph Connectivity
 
+O `assessment.json` é a declaração oficial descoberta no startup: `azure/secops/connectivity-diagnostics`, visibilidade `public`, auth Graph `User.Read`, timeout 60 segundos e limite global de concorrência. A migração para manifest não altera `/me`, consentimento/OBO ou scripts. Valide com `npm run assessments:validate`.
+
 Assessment de fundação que comprova acesso delegado ao Microsoft Graph através do fluxo On-Behalf-Of. Ele requer User.Read e executa somente:
 
 ~~~http

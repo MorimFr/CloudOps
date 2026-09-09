@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
@@ -7,7 +5,8 @@ import type { GraphTokenBroker } from "../src/auth/obo-service.js";
 import type { ValidatedApiToken } from "../src/auth/token-validator.js";
 import type { ApiConfig } from "../src/config.js";
 import { errors } from "../src/errors.js";
-import { AssessmentRegistry } from "../src/services/assessment-registry.js";
+import { AssessmentRegistry, createDefaultAssessmentRegistry } from "../src/services/assessment-registry.js";
+import { discoverAssessmentManifests } from "../src/services/assessment-discovery.js";
 import { ExecutionManager } from "../src/services/execution-manager.js";
 import {
   createLocalAuthHarness,
@@ -23,49 +22,12 @@ let tokenA: string;
 let tokenB: string;
 let authenticatedA: ValidatedApiToken;
 
-function registration() {
-  return {
-    id: "hello-world" as const,
-    name: "Hello World Assessment",
-    description: "Runtime validation card",
-    scriptRelativePath: path.join(
-      "hello-world",
-      "Invoke-Assessment.ps1",
-    ),
-    enabled: true,
-    timeoutMs: 30_000,
-    provider: "azure" as const,
-    domain: "devops" as const,
-    moduleId: "runtime-validation",
-    assessmentOrder: 1,
-    visibility: "development" as const,
-    requiredAuthProvider: "none" as const,
-    requiredPermissions: [] as const,
-    adminConsentRequired: false,
-  };
-}
-
 function registry(): AssessmentRegistry {
-  return new AssessmentRegistry(path.resolve("engine"), [registration()]);
+  return new AssessmentRegistry(discoverAssessmentManifests().filter((item) => item.manifest.id === "hello-world"));
 }
 
 function graphRegistry(): AssessmentRegistry {
-  return new AssessmentRegistry(path.resolve("engine"), [
-    {
-      ...registration(),
-      id: "microsoft-graph-connectivity",
-      name: "Microsoft Graph Connectivity",
-      scriptRelativePath: path.join(
-        "microsoft-graph-connectivity",
-        "Invoke-Assessment.ps1",
-      ),
-      domain: "secops",
-      moduleId: "connectivity-diagnostics",
-      visibility: "public",
-      requiredAuthProvider: "microsoft-graph",
-      requiredPermissions: ["User.Read"],
-    },
-  ]);
+  return new AssessmentRegistry(discoverAssessmentManifests().filter((item) => item.manifest.id === "microsoft-graph-connectivity"));
 }
 
 function authorization(token = tokenA): { authorization: string } {
@@ -121,7 +83,7 @@ afterEach(async () => {
 
 describe("CloudOps API", () => {
   it("launches the registered inactive-user tool with tenant-bound scopes and one-time download", async () => {
-    const assessmentRegistry = new AssessmentRegistry(path.resolve("engine"));
+    const assessmentRegistry = createDefaultAssessmentRegistry();
     const { app, manager, runtime } = await testApp({ assessmentRegistry, graphTokenBroker: {
       async acquireToken(request) {
         expect(request.tenantId).toBe(authenticatedA.principal.tenantId);
@@ -176,7 +138,7 @@ describe("CloudOps API", () => {
       {
         id: "hello-world",
         name: "Hello World Assessment",
-        description: "Runtime validation card",
+        description: "Validates the in-memory CloudOps execution and report pipeline.",
         enabled: true,
         provider: "azure",
         domain: "devops",
@@ -189,6 +151,7 @@ describe("CloudOps API", () => {
         requiredAuthProvider: "none",
         requiredPermissions: [],
         adminConsentRequired: false,
+        display: { icon: "code", tags: ["Runtime", "Development"], source: "Validação de runtime · desenvolvimento" },
       },
     ]);
     expect(catalog.json()[0]).not.toHaveProperty("scriptPath");
