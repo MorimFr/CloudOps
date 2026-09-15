@@ -5,6 +5,7 @@ import { errors } from "../errors.js";
 import { discoverAssessmentManifests, type DiscoveredAssessment } from "./assessment-discovery.js";
 import { AssessmentManifestError } from "./assessment-manifest-error.js";
 import { ModuleRegistry } from "./module-registry.js";
+import { discoverControlPacks } from "./control-pack-discovery.js";
 
 export interface RegisteredAssessment extends AssessmentSummary {
   readonly scriptPath: string;
@@ -64,5 +65,8 @@ export class AssessmentRegistry {
 }
 
 export function createDefaultAssessmentRegistry(engineRoot?: string): AssessmentRegistry {
-  return new AssessmentRegistry(discoverAssessmentManifests(engineRoot));
+  const plugins = discoverAssessmentManifests(engineRoot);
+  const registry = new AssessmentRegistry(plugins);
+  discoverControlPacks(plugins, engineRoot);
+  return registry;
 }

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "cloudops.control-pack.v1",
+  "id": "cloudops-identity-alternate-dev",
+  "name": "CloudOps Alternate Dev Pack — SYNTHETIC ONLY",
+  "framework": "cloudops-alternate-development",
+  "frameworkVersion": "2.0",
+  "controlPackVersion": "1.0.0",
+  "scope": ["user-lifecycle", "guest-external-identity", "identity-governance"],
+  "source": {
+    "kind": "DEVELOPMENT",
+    "reference": "Second CloudOps-owned synthetic pack proving framework-independent reuse. Not CIS."
+  },
+  "controls": [
+    {
+      "id": "DEV-ALTERNATE-001",
+      "title": "DEV alternate: synthetic member tolerance example",
+      "area": "user-lifecycle",
+      "order": 1,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": ["fixture-capability-summary", "fixture-users-summary"],
+      "evaluator": "dev-enabled-members",
+      "severity": "LOW",
+      "recommendationId": "dev-member-review",
+      "parameters": { "maximumDisabledMembers": 1 }
+    },
+    {
+      "id": "DEV-ALTERNATE-002",
+      "title": "DEV alternate: synthetic invitation tolerance example",
+      "area": "guest-external-identity",
+      "order": 2,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": ["fixture-users-summary"],
+      "evaluator": "dev-guest-invitations",
+      "severity": "LOW",
+      "recommendationId": "dev-guest-review",
+      "parameters": { "maximumPendingGuests": 1 }
+    },
+    {
+      "id": "DEV-ALTERNATE-003",
+      "title": "DEV alternate: synthetic approval review example",
+      "area": "identity-governance",
+      "order": 3,
+      "evaluationType": "MANUAL",
+      "collectorRequirements": [],
+      "evaluator": null,
+      "severity": "LOW",
+      "recommendationId": "dev-manual-review",
+      "parameters": {}
+    }
+  ]
+}

@@ -16,6 +16,7 @@ Esta etapa entrega:
 - assessment real `microsoft-graph-connectivity`, com delegated `User.Read`;
 - **Mapear Usuários Inativos**: relatório executivo HTML offline e CSV de inativos, com paginação dimensionada para ambientes de aproximadamente 200 mil usuários;
 - `hello-world` preservado como assessment de desenvolvimento e regressão;
+- Assessment SDK genérica, control packs com pins de versão/hash e skeleton desabilitado de Assessment de Identidade, validado exclusivamente com fixtures;
 - ZIP em RAM, download único, TTL e limpeza best-effort de buffers.
 
 ## Fluxo
@@ -92,6 +93,8 @@ npm run test
 npm run build
 npm run assessments:validate
 npm run assessments:list
+npm run control-packs:validate
+npm run control-packs:list
 npm run test:ui
 ```
 
@@ -101,6 +104,8 @@ Testes do engine no PowerShell 7:
 pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-GraphModule.ps1
 pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-HelloWorld.ps1
 pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-InactiveUsers.ps1 -ScaleUsers 200000
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-AssessmentSdk.ps1
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/identity-assessment/tests/Validate-IdentityAssessment.ps1
 npm run test:reports
 ```
 
@@ -136,7 +141,7 @@ npm run test
 
 O startup examina somente pastas imediatamente abaixo de `engine/`. Pastas sem manifest são ignoradas; manifest inválido impede a API de iniciar, com diagnóstico sanitizado. Módulos continuam centralizados. Não há watcher, upload ou instalação de código em runtime. Veja o [fluxo e exemplo completo](docs/assessment-development.md) e o [template somente documental](docs/examples/assessment.json).
 
-Os três assessments mantêm suas permissões, scripts e limites anteriores. Esta migração **não exige mudanças nos App Registrations ou novo consentimento**. `npm run test:e2e:local` valida Hello World com identidade sintética em memória e PowerShell real, sem Entra/Graph; exige `pwsh` no host ou imagem development.
+Os três assessments anteriores mantêm suas permissões, scripts e limites. A SDK acrescenta `identity-assessment` ao discovery, com `enabled=false`: não aparece como ferramenta executável e a API rejeita sua execução. Seus dois packs DEV validam o motor, não um tenant e não CIS. Não há LLM real nem alterações nos App Registrations ou consentimento. Veja [SDK](docs/assessment-sdk.md), [packs](docs/control-packs.md) e [Identidade](docs/identity-assessment.md). `npm run test:e2e:local` valida Hello World com identidade sintética em memória e PowerShell real, sem Entra/Graph; exige `pwsh` no host ou imagem development.
 
 ## Estrutura
 
@@ -147,6 +152,8 @@ apps/
 packages/contracts/              # schemas HTTP e protocolo interno
 engine/
 |-- shared/CloudOps.Graph.psm1   # Graph REST, retry, paginação e host pinning
+|-- shared/assessment-sdk/      # planner, DTOs, evidência, risco e AI boundary
+|-- identity-assessment/        # skeleton + dois packs DEV sintéticos, desabilitado
 |-- microsoft-graph-connectivity/
 |-- inactive-users/             # inventário incremental, HTML offline e CSV
 |-- hello-world/
@@ -166,6 +173,9 @@ docs/
 - [Zero Retention](docs/zero-retention.md)
 - [Contrato de assessments](docs/assessment-contract.md)
 - [Desenvolvimento de assessments](docs/assessment-development.md)
+- [Assessment SDK](docs/assessment-sdk.md)
+- [Control Packs e integração futura autorizada](docs/control-packs.md)
+- [Assessment de Identidade — skeleton e testes DEV](docs/identity-assessment.md)
 - [Desenvolvimento local](docs/local-development.md)
 - [Resultados da validação local](docs/validation-report.md)
 

@@ -22,6 +22,8 @@
     "test:reports": "playwright test --config playwright.reports.config.ts",
     "assessments:validate": "npm run assessments:validate --workspace @cloudops/api",
     "assessments:list": "npm run assessments:list --workspace @cloudops/api",
+    "control-packs:validate": "npm run control-packs:validate --workspace @cloudops/api",
+    "control-packs:list": "npm run control-packs:list --workspace @cloudops/api",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

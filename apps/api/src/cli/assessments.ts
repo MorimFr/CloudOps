@@ -1,5 +1,6 @@
 import { createDefaultAssessmentRegistry } from "../services/assessment-registry.js";
 import { AssessmentManifestError } from "../services/assessment-manifest-error.js";
+import { ControlPackValidationError } from "../services/control-pack-validation.js";
 
 try {
   const command = process.argv[2];
@@ -11,6 +12,6 @@ try {
     console.log(`${item.id}\n  ${item.provider}/${item.domain}/${item.moduleId}\n  powershell\n  ${item.visibility}${item.enabled ? "" : " (disabled)"}`);
   }
 } catch (error) {
-  console.error(error instanceof AssessmentManifestError ? error.message : "Assessment manifest validation failed safely.");
+  console.error(error instanceof AssessmentManifestError || error instanceof ControlPackValidationError ? error.message : "Assessment manifest validation failed safely.");
   process.exitCode = 1;
 }

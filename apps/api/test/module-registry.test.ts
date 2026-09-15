@@ -28,7 +28,10 @@ describe("central module registry", () => {
   });
   it("keeps empty taxonomy modules from manufacturing catalog entries", () => {
     const catalog = createDefaultAssessmentRegistry().list();
-    expect(catalog.map((item) => item.id)).toEqual(["hello-world", "inactive-users", "microsoft-graph-connectivity"]);
-    expect(catalog.filter((item) => item.moduleId === "security-assessments")).toEqual([]);
+    expect(catalog.map((item) => item.id)).toEqual(["hello-world", "identity-assessment", "inactive-users", "microsoft-graph-connectivity"]);
+    expect(catalog.filter((item) => item.moduleId === "security-assessments")).toEqual([
+      expect.objectContaining({ id: "identity-assessment", enabled: false }),
+    ]);
+    expect(catalog.filter((item) => item.moduleId === "security-assessments" && item.enabled)).toEqual([]);
   });
 });

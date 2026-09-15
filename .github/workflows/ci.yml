@@ -43,6 +43,12 @@ jobs:
       - name: List discovered assessment metadata
         run: npm run assessments:list
 
+      - name: Validate control packs, version pins, registries and permission plans
+        run: npm run control-packs:validate
+
+      - name: List static control pack metadata
+        run: npm run control-packs:list
+
       - name: Unit tests
         run: npm run test
 
@@ -114,6 +120,28 @@ jobs:
           --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m
           --env PSModuleAnalysisCachePath=/dev/null
           cloudops-development:ci npm run test:e2e:local
+
+      - name: Validate generic Assessment SDK, planner, risk and advisory boundary
+        run: >-
+          docker run --rm --network none --read-only
+          --cap-drop ALL --security-opt no-new-privileges:true
+          --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m
+          --env HOME=/tmp/cloudops-home
+          --env XDG_CACHE_HOME=/tmp/cloudops-home/.cache
+          --env PSModuleAnalysisCachePath=/dev/null
+          cloudops-development:ci pwsh -NoLogo -NoProfile -NonInteractive
+          -File engine/tests/Validate-AssessmentSdk.ps1
+
+      - name: Validate Identity DEV collectors, evaluators and offline ZIP pipeline
+        run: >-
+          docker run --rm --network none --read-only
+          --cap-drop ALL --security-opt no-new-privileges:true
+          --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m
+          --env HOME=/tmp/cloudops-home
+          --env XDG_CACHE_HOME=/tmp/cloudops-home/.cache
+          --env PSModuleAnalysisCachePath=/dev/null
+          cloudops-development:ci pwsh -NoLogo -NoProfile -NonInteractive
+          -File engine/identity-assessment/tests/Validate-IdentityAssessment.ps1
 
       - name: Offline report responsive and print validation (synthetic)
         run: npm run test:reports

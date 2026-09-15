@@ -42,7 +42,7 @@ Hello World deve permanecer `azure/devops/runtime-validation`, `development`, au
 
 Ordens inteiras de 1 a 999, com desempate por ID. Módulos vazios e assessments desabilitados não aparecem. `adminConsentRequired=true` adiciona badge compacto, mas a autorização efetiva continua responsabilidade Entra/API; não infira aprovação apenas pela metadata.
 
-O módulo `identity-visibility` contém `inactive-users` (Mapear Usuários Inativos), com HTML/CSV e permissões de leitura administrativas. `security-assessments` e `protection-response` continuam preparados e vazios. Identity Assessment permanece futuro. Veja [regras e limites do inventário](inactive-users.md).
+O módulo `identity-visibility` contém `inactive-users` (Mapear Usuários Inativos), com HTML/CSV e permissões de leitura administrativas. `security-assessments` registra o skeleton `identity-assessment`, desabilitado até existir pack real autorizado; por isso continua sem card executável. `protection-response` permanece preparado e vazio. Veja [Identidade](identity-assessment.md) e [regras e limites do inventário](inactive-users.md).
 
 ## Fluxo de desenvolvimento
 
@@ -212,3 +212,23 @@ npm run test:e2e:local
 ```
 
 Unit tests não chamam Graph real. O E2E Graph real é manual e exige conta/consentimento válidos.
+
+## Assessments estruturados com a SDK
+
+Novos assessments estruturados podem acrescentar `assessment-sdk.json` e `control-packs/` ao plugin. Os três engines anteriores não foram migrados: Inactive Users, Graph Connectivity e Hello World continuam independentes.
+
+O profile lista registries estáticos e versões; o código do adapter liga IDs aprovados às implementações. O startup faz validação de packs automaticamente, antes de iniciar serviços, inclusive para plugins desabilitados. Não carregue script, path, URL ou expressão a partir de um control. Não aceite pack ou fixture via options HTTP.
+
+Reutilize `engine/shared/assessment-sdk/CloudOps.Assessment.psm1`: Planner, NormalizedState, evaluator isolado, Evidence, Finding, Risk, AI boundary e ReportModel. Seu plugin implementa coleta/normalização específica e apresentação, sem duplicar os contratos centrais. Coletores recebem autenticação separada do Context seguro. A versão atual de Facts trabalha com agregados mínimos; nunca acrescente um dump Graph para contornar o contrato.
+
+Para cada controle, crie fixtures de evidência exata PASS/FAIL, inaplicabilidade, dados ausentes e erro; prove deduplicação e determinismo antes de publicar nova versão. O fluxo completo está em [Control Packs](control-packs.md#implementar-um-novo-controle) e a interface em [SDK](assessment-sdk.md).
+
+```powershell
+npm run control-packs:validate
+npm run control-packs:list
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/tests/Validate-AssessmentSdk.ps1
+pwsh -NoLogo -NoProfile -NonInteractive -File ./engine/identity-assessment/tests/Validate-IdentityAssessment.ps1
+npm run test:reports
+```
+
+Fixtures e fake AI existem somente no harness DEV interno. A execução normal de Identidade falha fechada enquanto o manifest estiver desabilitado e não houver pack de produção. Não habilite o plugin apontando para DEV para simular análise real.

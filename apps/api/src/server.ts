@@ -1,6 +1,7 @@
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { AssessmentManifestError } from "./services/assessment-manifest-error.js";
+import { ControlPackValidationError } from "./services/control-pack-validation.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -28,6 +29,6 @@ async function main(): Promise<void> {
 main().catch((error: unknown) => {
   // Startup errors are deliberately generic: configuration, internal paths, and
   // environment values must not be reflected to logs or callers.
-  console.error(error instanceof AssessmentManifestError ? error.message : "CloudOps API failed to start.");
+  console.error(error instanceof AssessmentManifestError || error instanceof ControlPackValidationError ? error.message : "CloudOps API failed to start.");
   process.exitCode = 1;
 });

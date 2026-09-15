@@ -1,4 +1,91 @@
-# Validação — Mapear Usuários Inativos e histórico da foundation
+# Validação — Assessment SDK e histórico da foundation
+
+## Assessment SDK — resultado final — 2026-09-15
+
+Implementação local concluída: SDK genérica, DTOs versionados estritos TypeScript/PowerShell, planner com preflight completo, collectors deduplicados, evidências estruturadas, risco determinístico, AI boundary e dois packs DEV reutilizando o skeleton de Identidade. Nenhum conteúdo CIS real ou LLM externo foi incorporado. `identity-assessment` está registrado, público na metadata, mas **desabilitado** e sem auth/scopes; não é uma ferramenta de produção ativada.
+
+### Validações executadas
+
+| Verificação | Resultado final |
+| --- | --- |
+| `npm install` | Aprovado; 349 pacotes auditados, zero vulnerabilidades reportadas, nenhuma alteração efetiva no lockfile. |
+| `npm run typecheck` / `npm run lint` | Aprovados; zero erros e zero warnings de lint. |
+| `npm run test` | **409 aprovados, 0 falhas**: contracts 158, API 197, Web 54. Baseline: 232. |
+| `npm run build` | Aprovado no host e no build Docker. |
+| `npm run assessments:validate` / `assessments:list` | Quatro manifests válidos; Identidade explicitamente disabled. |
+| `npm run control-packs:validate` / `control-packs:list` | Dois packs válidos, cada um com três controles, dois AUTOMATED, um MANUAL e dois collectors únicos. |
+| CLI compilado da imagem runtime | Quatro manifests e dois packs válidos, sem importar/executar PowerShell. |
+| `npm run test:ui` | **18 aprovados**; catálogo, consentimento, drawer e sidebar multicloud preservados. |
+| `npm run test:reports` | **8 aprovados**: quatro de Identidade e quatro de Inativos, incluindo 1440/768/390 px e impressão, sem requests externos. |
+| `Validate-AssessmentSdk.ps1` | **256 checagens aprovadas**, incluindo 100 repetições determinísticas, hash, preflight, permissões, isolamento, risco e AI adversarial. |
+| `Validate-IdentityAssessment.ps1` | **160 assertions aprovadas**, dois frameworks DEV, resultados exatos por evaluator, 100 execuções determinísticas, ZIP com/sem AI fake e cleanup. |
+| `Validate-UsersCollector.ps1` (incluído em Identidade) | Matriz Graph fake e **200.000 usuários / 201 páginas / nove agregados**, sem acumular registros individuais. |
+| Graph / Hello World / Inativos PowerShell | Aprovados em containers sem rede, read-only; Inativos usa 10.000 contas sintéticas. |
+| `npm run test:e2e:local` | Aprovado na imagem development: JWT sintético → HTTP autenticado → discovery → PowerShell real → ZIP RAM → download único. |
+| Compose `build` / `up -d --wait` | Aprovados com overlay e projeto isolado `cloudops-sdk-validation`, portas loopback 3011/5181, configuração sintética e `--env-file .env.example`. |
+| Serviços da imagem | Runtime healthy, health HTTP 200, catálogo anônimo HTTP 401, Web HTTP 200; filesystem runtime read-only, usuário node, Node 24.20.0, PowerShell 7.6.5. |
+| Diff dos componentes preservados | Sem alterações em Inativos, Graph Connectivity, Hello World, Graph/Execution/Security compartilhados ou código frontend. |
+
+O collector de Identidade processou 200 mil objetos em 16,9 s na última rodada, com transporte e esperas simulados. Rodadas concorrentes variaram de 16,8 a 21,0 s; não é benchmark ou SLA do Graph. A estratégia mantém somente a página corrente e os agregados necessários. Os testes usam dados sintéticos, nunca credenciais ou tenant real.
+
+Regressão final de Inativos na imagem: 10.000 contas, 22 consultas, ZIP de 63.283 bytes, 9,8 s e pico de working set 303,3 MiB, também com rede/pacing simulados.
+
+Os validadores novos executaram com engine atual montado read-only e rede desabilitada. Graph/Hello e o E2E também foram confirmados na imagem construída. A última adição de testes exatos por evaluator foi validada pelo mount do código atual; não altera código de produção. O relatório recebeu ainda uma inspeção visual opt-in com fixture sintética; a rodada final voltou ao modo padrão sem capturas.
+
+As primeiras execuções identificaram falhas de implementação que foram corrigidas antes desta aprovação: shadowing de `Count`/`Keys` por fatos em dictionaries PowerShell, perda de distinção ordinal em clones, conversão automática de strings ISO em datas, preservação de `null` em arrays JSON, tipo numérico JSON integral, parâmetro `ProgressAction` conflitante com PowerShell 7.6, saída de runspace e validação do hash do texto efetivamente executado. Os testes agora cobrem essas regressões. Uma checagem HTTP de diagnóstico teve erro de aspas do Windows e foi repetida com sucesso; não foi falha da aplicação.
+
+Avisos não bloqueantes: o bundle frontend continua acima de 500 kB (667,06 kB nesta rodada); npm solicita revisão explícita do postinstall `esbuild`, que não foi aprovado adicionalmente; a imagem development informa depreciação de dependência transitiva `whatwg-encoding`. Instalação, build e testes passaram sem mudar versões ou relaxar controles.
+
+### Revisão explícita de segurança
+
+| Pergunta | Resposta |
+| --- | --- |
+| Can AI change PASS/FAIL? | Não. Resultado autoritativo separado; advisory estrito, sem merge de campos. |
+| Can evaluator call Graph? | Não. AST positiva e runspace vazio/constrained, sem comandos, providers, credenciais ou APIs de IO expostas. |
+| Can control pack execute PowerShell? | Não. JSON estrito referencia somente IDs de implementações estáticas revisadas. |
+| Can raw Graph response be persisted? | Não pelo pipeline implementado. Página normalizada e descartada, sem arquivos/cache/checkpoint de assessment. |
+| Can Graph token reach AI? | Não. Sanitizer recebe apenas resultado agregado; auth pertence ao collector. |
+| Can Graph token reach frontend? | Não. Fronteira OBO/stdin existente e projeção pública preservadas. |
+| Can control pack request arbitrary Graph scopes? | Não. Scopes não são campos do pack; união dos collectors precisa caber no manifest e allowlist Azure existente. |
+
+Essas garantias descrevem a superfície implementada, não um sandbox para código PowerShell hostil. Módulos do build continuam confiáveis e revisados. Runspace usa cancelamento cooperativo, não quota de heap por evaluator. Wipe de memória gerenciada é best-effort. A imutabilidade de releases depende de revisão/versionamento: hash impede executar conteúdo diferente do pin aprovado, mas não impede alguém com autoridade sobre o repositório de alterar simultaneamente conteúdo e pin.
+
+### Zero Retention e escopo preservado
+
+Não foram adicionados banco, storage, Redis, fila, cache de filesystem, history, checkpoint ou provedor LLM. Artefatos, dados e contexto transitório permanecem em RAM; profiles/packs/recomendações são configuração estática de produto. O arquivo baixado pelo administrador continua sendo a persistência intencional do resultado. Nenhum App Registration, grant, secret ou `.env` foi consultado/alterado por esta entrega. Nenhuma operação de commit, push, PR, merge ou tag foi realizada.
+
+Após os checks, foram removidos somente os containers `cloudops-sdk-validation-cloudops-runtime-1`, `cloudops-sdk-validation-cloudops-web-1` e a rede `cloudops-sdk-validation_default`. São recursos descartáveis recriáveis com o overlay de validação. As imagens `cloudops-plugin-runtime:validation` e `cloudops-plugin-development:validation` foram preservadas; imagens e serviços normais não foram substituídos. `git diff --check` passou no fechamento.
+
+CI acrescenta validate/list de packs e os dois validadores SDK/Identidade; preserva testes de manifests, unitários, UI, Graph, Hello, Inativos, E2E local e relatórios. Os testes de Identidade incluem fake collector 200/429/500/401/403, paginação, Retry-After, campos ausentes/null/enums, partial, falha de rede, limite de páginas e host pinning. O SDK testa alteração de status/evidence/severity/applicability/versões pela IA, timeout/erro, hashes modificados e referências inválidas antes de coleta. Playwright valida DTOs PowerShell com os schemas Zod.
+
+### Inventário de arquivos desta entrega
+
+Criados:
+
+- `packages/contracts/src/assessment-sdk.ts` e `packages/contracts/test/assessment-sdk.test.ts`.
+- `apps/api/src/services/control-pack-discovery.ts`, `control-pack-validation.ts`, `apps/api/src/cli/control-packs.ts` e `apps/api/test/control-packs.test.ts`.
+- `engine/shared/assessment-sdk/`: `CloudOps.Assessment.psm1`, `Validation.psm1`, `ControlPack.psm1`, `Planner.psm1`, `Collector.psm1`, `Normalization.psm1`, `Evaluation.psm1`, `Evidence.psm1`, `Finding.psm1`, `Risk.psm1`, `AiBoundary.psm1`, `ReportModel.psm1`.
+- `engine/tests/Validate-AssessmentSdk.ps1`.
+- `engine/identity-assessment/`: `assessment.json`, `assessment-sdk.json`, `Invoke-Assessment.ps1`, `README.md`; `control-packs/README.md`, `cloudops-identity-dev.json`, `cloudops-identity-alternate-dev.json`; `src/IdentityAssessment.psm1`, `src/collectors/Users.psm1`, `src/evaluators/Development.psm1`, `src/normalization/IdentityState.psm1`, `src/report/Report.psm1`; `tests/DevelopmentFixture.psm1`, `tests/Validate-IdentityAssessment.ps1`, `tests/Validate-UsersCollector.ps1`.
+- `tests/reports/identity-assessment.spec.ts`.
+- `docs/assessment-sdk.md`, `docs/control-packs.md`, `docs/identity-assessment.md`.
+
+Modificados:
+
+- `package.json`, `apps/api/package.json`, `packages/contracts/src/index.ts`, `.github/workflows/ci.yml`.
+- `apps/api/src/cli/assessments.ts`, `apps/api/src/server.ts`, `apps/api/src/services/assessment-registry.ts`.
+- `apps/api/test/assessment-discovery.test.ts`, `assessment-registry.test.ts`, `module-registry.test.ts`.
+- `README.md`, `docs/architecture.md`, `docs/assessment-development.md`, `docs/zero-retention.md`, `docs/validation-report.md`.
+
+Limites conhecidos: Identidade desabilitado e sintético; sem CIS real/LLM real; HYBRID é MANUAL na v1; Facts são agregados escalares; sem checkpoint; ativar um primeiro pack real exige fonte autorizada, evidência/coletores adequados e revisão de permissões. Próximo passo recomendado somente: implementar o primeiro Control Pack real autorizado para Assessment de Identidade.
+
+## Assessment SDK — baseline — 2026-09-09
+
+Antes de modificar arquivos, foram revisados README, toda a documentação, contratos, manifests/discovery, engine compartilhado, assessments existentes e testes. A fundação de manifests está completa e o worktree estava limpo.
+
+Baseline executado: **232 testes unitários aprovados** (contracts 36, API 142, Web 54), **18 testes de UI**, **4 testes HTML/print**, typecheck, lint, build, três manifests válidos/listados, validadores PowerShell Graph/Hello World/Inativos e E2E HTTP Hello World aprovados. Inativos com 10.000 contas sintéticas: 22 requisições, ZIP de 63.283 bytes, 10,6 s e pico de working set 315,3 MiB, com rede/pacing simulados.
+
+Host Node 24.19.0/npm 11.17.0; container Node 24.20.0/PowerShell 7.6.5; Compose 5.4.0. Docker Desktop estava desligado e foi iniciado oculto. Testes usaram engine atual montado read-only, containers descartáveis sem rede externa e identidade sintética para HTTP. Nenhum `.env`, credencial, grant, configuração ou imagem normal foi alterado. O aviso preexistente de bundle frontend >500 kB permanece.
 
 ## Plugins autodescritivos — baseline e escopo — 2026-09-08
 

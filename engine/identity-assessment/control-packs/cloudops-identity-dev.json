@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "cloudops.control-pack.v1",
+  "id": "cloudops-identity-dev",
+  "name": "CloudOps Identity Dev Pack — SYNTHETIC ONLY",
+  "framework": "cloudops-development",
+  "frameworkVersion": "1.0",
+  "controlPackVersion": "1.0.0",
+  "scope": ["user-lifecycle", "guest-external-identity", "identity-governance"],
+  "source": {
+    "kind": "DEVELOPMENT",
+    "reference": "CloudOps-owned synthetic development definitions. Not CIS or a production security baseline."
+  },
+  "controls": [
+    {
+      "id": "DEV-IDENTITY-001",
+      "title": "DEV: synthetic member enablement example",
+      "area": "user-lifecycle",
+      "order": 1,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": ["fixture-capability-summary", "fixture-users-summary"],
+      "evaluator": "dev-enabled-members",
+      "severity": "MEDIUM",
+      "recommendationId": "dev-member-review",
+      "parameters": { "maximumDisabledMembers": 0 }
+    },
+    {
+      "id": "DEV-IDENTITY-002",
+      "title": "DEV: synthetic pending invitation example",
+      "area": "guest-external-identity",
+      "order": 2,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": ["fixture-users-summary"],
+      "evaluator": "dev-guest-invitations",
+      "severity": "MEDIUM",
+      "recommendationId": "dev-guest-review",
+      "parameters": { "maximumPendingGuests": 0 }
+    },
+    {
+      "id": "DEV-IDENTITY-003",
+      "title": "DEV: synthetic human review example",
+      "area": "identity-governance",
+      "order": 3,
+      "evaluationType": "MANUAL",
+      "collectorRequirements": [],
+      "evaluator": null,
+      "severity": "LOW",
+      "recommendationId": "dev-manual-review",
+      "parameters": {}
+    }
+  ]
+}

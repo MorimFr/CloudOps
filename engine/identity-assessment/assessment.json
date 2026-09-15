@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "cloudops.assessment.v1",
+  "id": "identity-assessment",
+  "name": "Assessment de Identidade",
+  "description": "Estrutura de avaliação de identidade em desenvolvimento. A execução pública será habilitada após a publicação de um control pack real autorizado; os packs atuais usam somente dados sintéticos e não são CIS.",
+  "provider": "azure",
+  "domain": "secops",
+  "moduleId": "security-assessments",
+  "assessmentOrder": 1,
+  "enabled": false,
+  "visibility": "public",
+  "engine": {
+    "runtime": "powershell",
+    "entrypoint": "Invoke-Assessment.ps1",
+    "timeoutSeconds": 300,
+    "maxConcurrentExecutions": 1
+  },
+  "auth": {
+    "provider": "none",
+    "permissions": [],
+    "adminConsentRequired": false
+  },
+  "display": {
+    "icon": "shield",
+    "tags": ["Identity", "Security Assessment", "Microsoft Entra"],
+    "source": "Microsoft Entra ID · Microsoft Graph"
+  }
+}

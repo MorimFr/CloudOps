@@ -133,3 +133,29 @@ O status público carrega somente metadados operacionais e `publicMetrics` agreg
 - Erros de manifest mostram somente path relativo seguro, campo conhecido e motivo fixo; não refletem valores, chaves desconhecidas, filesystem absoluto ou stacks em produção.
 
 Para detalhes, consulte [authentication.md](authentication.md), [microsoft-graph.md](microsoft-graph.md) e [zero-retention.md](zero-retention.md).
+
+## Assessment SDK e Control Packs
+
+Uma camada opcional permite compor assessments estruturados sem transformar cada ferramenta em script monolítico. `createDefaultAssessmentRegistry` preserva o discovery de manifests/módulos e acrescenta validação estática de `assessment-sdk.json` e seus packs antes da criação da API. Plugins sem profile não mudam de comportamento. Os arquivos são limitados, contidos no plugin e sem links; erros de SDK são sanitizados. Não há autenticação/coleta nesta fase.
+
+```text
+Manifest → profile estático → pins de Control Packs → preflight
+                                                      ↓
+Collector registry → Planner → coletas únicas → NormalizedState
+                                                      ↓
+Evaluator registry → avaliação pura → Evidence/Finding → Risk
+                                                      ↓
+Recommendation catalog → ReportModel ← AI advisory separado
+                              ↓
+                     HTML/CSV/metadata → ZIP RAM
+```
+
+O core é cloud-agnostic. Graph existe apenas no collector de Identidade, reutilizando o cliente compartilhado; outro provider pode implementar seus collectors sem mudar o SDK. Perfil/control são dados; implementações vêm de registries de código revisado. Requisitos de permissão são unidos e validados contra o manifest, não inventados pelo pack.
+
+ControlResult usa PASS/FAIL/MANUAL/NOT_APPLICABLE/UNKNOWN/ERROR. Falha de coleta não vira FAIL, e cobertura não é conformidade. Findings conservam evidência estruturada, confidence e risco calculado independentemente da IA. Metadata fixa timestamp, framework, pack/hash, SDK e versões de evaluator.
+
+Evaluators operam sobre cópias mínimas em runspace vazio/constrained com allowlist de AST e prazo. Não recebem CollectorContext, token, objetos Graph ou credenciais. Essa defesa não torna o runtime um sandbox para plugins hostis: o build permanece confiável e revisado.
+
+AI recebe apenas IDs de controles, enums e agregados aprovados, nunca estado bruto; sua saída é validada e anexada a campo consultivo separado. Falha/timeout não invalida o relatório determinístico. Não existe LLM externo nesta entrega.
+
+O skeleton `identity-assessment` é público na metadata mas desabilitado e sem auth/scopes; a UI existente o filtra e a API impede execução. Dois packs sintéticos validam reuso sem CIS nem tenant. O ExecutionPanel, os protocolos de execução e os três engines anteriores não foram refatorados. Detalhes em [SDK](assessment-sdk.md) e [Control Packs](control-packs.md).

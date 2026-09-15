@@ -75,3 +75,15 @@ O consentimento combinado não altera a fronteira de confiança: a API continua 
 Os snapshots não detectam um arquivo criado e removido integralmente entre medições e não provam comportamento do host. Eles demonstram, junto ao código e ao filesystem read-only, que os engines não dependem de persistência.
 
 O inventário de inativos não cria checkpoints: guarda GUIDs de deduplicação, agregados, uma amostra limitada e o ZIP comprimido em RAM. Uma falha tardia descarta o ZIP completo. As métricas agregadas são visíveis durante a coleta somente ao proprietário; desaparecem se a execução falhar. HTML/CSV baixados podem conter PII e precisam de proteção e descarte pelo administrador.
+
+## Assessment SDK
+
+Profiles `assessment-sdk.json`, control packs, recomendações e fixtures DEV são configuração/código estático de produto, não resultados de tenant. O discovery faz apenas leitura limitada; não cria índice, arquivo de resultado, cache ou checkpoint. Fixtures temporárias dos testes de configuração são sintéticas e removidas ao final.
+
+O caminho de dados permanece em RAM: página Graph → agregados mínimos do collector → estado normalizado → evidência/findings → ReportModel → quatro entries de ZIP. A SDK não recebe Graph token; apenas o collector específico tem o contexto de autenticação. Evaluator, AI e renderer recebem DTOs separados, sem credenciais. Fatos v1 não contêm registros individuais ou texto Graph.
+
+O sanitizer de IA gera novo objeto com IDs de controles e fatos numéricos/booleanos aprovados. Não há LLM real, logs de prompt/resposta, cache, histórico ou saída para rede. Resultados autoritativos nunca compartilham objeto mutável com a saída consultiva. Provider indisponível ou inválido não impede o relatório.
+
+Os módulos usam `try/finally`, encerram runspaces e liberam referências. O gerador de ZIP devolve MemoryStream ao chamador, que deve sobrescrever o buffer e descartá-lo em `finally`, inclusive se houver falha. Strings e cópias do runtime continuam sob as limitações best-effort descritas acima; não há promessa de zeroização física verificável.
+
+Validadores da SDK/Identidade rodam sem rede e com filesystem read-only, fixtures de Graph/AI em memória e verificações de ausência de escrita. Playwright recebe HTML/CSV sintéticos por stdout em RAM, valida ausência de requests externos e mantém captura visual opt-in. Não usar esse harness com dados de cliente. Nenhum mecanismo de persistência foi adicionado; perda de processo continua perdendo a execução.

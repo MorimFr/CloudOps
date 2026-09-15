@@ -67,7 +67,7 @@ describe("trusted manifest discovery", () => {
 
   it("validates all real manifests and paths, independent of process working directory", () => {
     const plugins = discoverAssessmentManifests();
-    expect(plugins).toHaveLength(3);
+    expect(plugins).toHaveLength(4);
     for (const plugin of plugins) {
       expect(plugin.scriptPath).toBe(path.join(defaultEngineRoot(), plugin.manifest.id, "Invoke-Assessment.ps1"));
       expect(Object.isFrozen(plugin.manifest)).toBe(true);

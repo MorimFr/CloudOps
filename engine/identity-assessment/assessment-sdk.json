@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "cloudops.assessment-definition.v1",
+  "assessmentId": "identity-assessment",
+  "assessmentVersion": "0.1.0",
+  "sdkVersion": "cloudops.assessment-sdk.v1",
+  "capabilities": ["user-inventory"],
+  "aiFactAllowlist": ["members", "disabledMembers", "guests", "pendingGuests"],
+  "collectors": [
+    { "id": "fixture-capability-summary", "version": "1.0.0", "requiredPermissions": [], "requiredCapabilities": ["user-inventory"], "requiresAuthentication": false },
+    { "id": "fixture-users-summary", "version": "1.0.0", "requiredPermissions": [], "requiredCapabilities": [], "requiresAuthentication": false },
+    { "id": "identity-users-summary", "version": "1.0.0", "requiredPermissions": ["User.Read.All"], "requiredCapabilities": [], "requiresAuthentication": true }
+  ],
+  "evaluators": [
+    { "id": "dev-enabled-members", "version": "1.0.0", "collectorRequirements": ["fixture-capability-summary", "fixture-users-summary"] },
+    { "id": "dev-guest-invitations", "version": "1.0.0", "collectorRequirements": ["fixture-users-summary"] }
+  ],
+  "recommendations": [
+    {
+      "recommendationId": "dev-member-review",
+      "title": "DEV only: inspect synthetic member fixture",
+      "summary": "This is a development exercise, not a recommendation to enable tenant accounts.",
+      "technicalSteps": ["Review the synthetic fixture and expected disabled member count.", "Change only the test fixture to exercise PASS and FAIL."],
+      "portalPath": [],
+      "impact": "No tenant change. Never enable a real account based on this development control.",
+      "rollback": ["Restore the synthetic fixture."],
+      "validation": ["Run the deterministic evaluator and verify the expected evidence counters."]
+    },
+    {
+      "recommendationId": "dev-guest-review",
+      "title": "DEV only: inspect synthetic invitation fixture",
+      "summary": "This example demonstrates evidence and risk; it is not a guest removal policy.",
+      "technicalSteps": ["Review the synthetic pending invitation count.", "Change the test fixture or choose the alternate synthetic pack."],
+      "portalPath": [],
+      "impact": "No tenant change. Do not remove or reinvite real users based on this example.",
+      "rollback": ["Restore the synthetic invitation fixture."],
+      "validation": ["Verify PASS, FAIL, NOT_APPLICABLE and UNKNOWN fixtures without network access."]
+    },
+    {
+      "recommendationId": "dev-manual-review",
+      "title": "DEV only: demonstrate manual review workflow",
+      "summary": "A human must assess the synthetic review exercise; the engine cannot assert compliance.",
+      "technicalSteps": ["Read the synthetic control definition.", "Record the manual conclusion outside this development test if required by the test protocol."],
+      "portalPath": [],
+      "impact": "No tenant change and no automated PASS or FAIL.",
+      "rollback": ["No configuration is modified."],
+      "validation": ["Verify the control remains MANUAL in HTML and both CSV files."]
+    }
+  ],
+  "controlPacks": [
+    { "id": "cloudops-identity-alternate-dev", "version": "1.0.0", "file": "cloudops-identity-alternate-dev.json", "sha256": "88c7b72685e7ee83daf79c866381c9150dc04f6127baeec152c064f7635a1f80" },
+    { "id": "cloudops-identity-dev", "version": "1.0.0", "file": "cloudops-identity-dev.json", "sha256": "2143d2a2669d6ec87e69082608cda001fa794daa037fa470a79a71d9e79d7c70" }
+  ]
+}

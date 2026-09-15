@@ -5,9 +5,15 @@ import { discoverAssessmentManifests } from "../src/services/assessment-discover
 import { syntheticManifest, syntheticPlugin } from "./manifest-fixtures.js";
 
 describe("manifest-backed AssessmentRegistry", () => {
-  it("migrates all three real assessments without changing behavior metadata", () => {
+  it("preserves the three existing assessments and registers the disabled Identity skeleton", () => {
     const registry = createDefaultAssessmentRegistry();
-    expect(registry.list().map((item) => item.id)).toEqual(["hello-world", "inactive-users", "microsoft-graph-connectivity"]);
+    expect(registry.list().map((item) => item.id)).toEqual(["hello-world", "identity-assessment", "inactive-users", "microsoft-graph-connectivity"]);
+    expect(registry.list().find((item) => item.id === "identity-assessment")).toMatchObject({
+      name: "Assessment de Identidade", provider: "azure", domain: "secops", moduleId: "security-assessments",
+      visibility: "public", enabled: false, requiredAuthProvider: "none", requiredPermissions: [],
+      adminConsentRequired: false, display: { icon: "shield" },
+    });
+    expect(() => registry.resolve("identity-assessment")).toThrowError(expect.objectContaining({ code: "ASSESSMENT_DISABLED" }));
     expect(registry.resolve("inactive-users")).toMatchObject({
       name: "Mapear Usuários Inativos", provider: "azure", domain: "secops", moduleId: "identity-visibility",
       assessmentOrder: 1, moduleOrder: 2, visibility: "public", enabled: true,
@@ -30,7 +36,7 @@ describe("manifest-backed AssessmentRegistry", () => {
   it("projects only strict public metadata, including optional display", () => {
     for (const item of createDefaultAssessmentRegistry().list()) {
       expect(AssessmentSummarySchema.safeParse(item).success).toBe(true);
-      for (const key of ["engine", "auth", "scriptPath", "entrypoint", "timeoutMs", "timeoutSeconds", "maxConcurrentExecutions", "manifestPath"]) {
+      for (const key of ["engine", "auth", "scriptPath", "entrypoint", "timeoutMs", "timeoutSeconds", "maxConcurrentExecutions", "manifestPath", "controlPacks", "collectors", "evaluators", "aiFactAllowlist", "sha256"]) {
         expect(item).not.toHaveProperty(key);
       }
     }
