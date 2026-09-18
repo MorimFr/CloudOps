@@ -85,7 +85,7 @@ export function discoverControlPacks(
     if (!definition.success) invalid("assessment-sdk.json", "invalid strict definition schema or registry references");
     if (definition.data.assessmentId !== manifest.id) invalid("assessmentId", "definition does not match plugin");
     for (const reference of definition.data.controlPacks) {
-      const contents = readStaticJson(root, ["control-packs", reference.file], MAX_CONTROL_PACK_BYTES);
+      const contents = readStaticJson(root, ["control-packs", ...reference.file.split("/")], MAX_CONTROL_PACK_BYTES);
       const parsed = ControlPackSchema.safeParse(contents.value);
       if (!parsed.success) invalid("control-packs", "invalid strict control pack schema");
       const pack = parsed.data;

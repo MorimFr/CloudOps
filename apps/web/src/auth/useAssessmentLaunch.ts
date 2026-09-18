@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { classifyIdentityFailure, type AssessmentSummary, type CreateExecutionResponse } from "@cloudops/contracts";
+import { classifyIdentityFailure, type AssessmentSummary, type CreateExecutionResponse, type AssessmentExecutionRequest } from "@cloudops/contracts";
 import { CloudOpsApiError, createExecution, type AuthenticationRetryBudget } from "../api/cloudops";
 import { safeConsentError, type AuthIssue } from "./consent";
 import type { ApiAccessTokenProvider, CloudOpsAuthState } from "./types";
 
 export interface PendingConsent extends AuthIssue {
   readonly assessment: AssessmentSummary;
+  readonly options: AssessmentExecutionRequest["options"];
   readonly retryAvailable: boolean;
 }
 
@@ -46,10 +47,10 @@ export function useAssessmentLaunch(
     return () => { mounted.current = false; };
   }, []);
 
-  const attempt = async (assessment: AssessmentSummary, tokenProvider: ApiAccessTokenProvider) => {
+  const attempt = async (assessment: AssessmentSummary, options: AssessmentExecutionRequest["options"], tokenProvider: ApiAccessTokenProvider) => {
     setCreatingId(assessment.id);
     try {
-      const created = await createExecution({ assessmentId: assessment.id, options: {} }, tokenProvider, budget.current);
+      const created = await createExecution({ assessmentId: assessment.id, options }, tokenProvider, budget.current);
       if (mounted.current) {
         setConsent(null);
         onCreated(created, assessment.id);
@@ -58,7 +59,7 @@ export function useAssessmentLaunch(
       if (!mounted.current) return;
       const issue = permissionIssue(error);
       if (issue) {
-        setConsent({ ...issue, assessment, retryAvailable: budget.current.remaining > 0 });
+        setConsent({ ...issue, assessment, options, retryAvailable: budget.current.remaining > 0 });
       } else {
         onError(error);
       }
@@ -67,12 +68,12 @@ export function useAssessmentLaunch(
     }
   };
 
-  const launch = async (assessment: AssessmentSummary) => {
+  const launch = async (assessment: AssessmentSummary, options: AssessmentExecutionRequest["options"] = {}) => {
     if (locked.current || !auth.authenticated || !assessment.enabled) return;
     locked.current = true;
     budget.current = { remaining: 1 };
     setConsent(null);
-    try { await attempt(assessment, auth.getApiAccessToken); }
+    try { await attempt(assessment, structuredClone(options), auth.getApiAccessToken); }
     finally { locked.current = false; }
   };
 
@@ -91,11 +92,11 @@ export function useAssessmentLaunch(
       if (!mounted.current) return;
       budget.current.remaining = 0;
       setConsent((current) => current ? { ...current, retryAvailable: false } : null);
-      await attempt(consent.assessment, (request) => auth.getApiAccessToken({ ...request, forceRefresh: true }));
+      await attempt(consent.assessment, consent.options, (request) => auth.getApiAccessToken({ ...request, forceRefresh: true }));
     } catch (reason) {
       if (!mounted.current) return;
       const safe = safeConsentError(reason);
-      setConsent({ ...safe.issue, assessment: consent.assessment, retryAvailable: budget.current.remaining > 0 });
+      setConsent({ ...safe.issue, assessment: consent.assessment, options: consent.options, retryAvailable: budget.current.remaining > 0 });
     } finally {
       locked.current = false;
       if (mounted.current) setConsenting(false);

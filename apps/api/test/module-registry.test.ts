@@ -30,8 +30,9 @@ describe("central module registry", () => {
     const catalog = createDefaultAssessmentRegistry().list();
     expect(catalog.map((item) => item.id)).toEqual(["hello-world", "identity-assessment", "inactive-users", "microsoft-graph-connectivity"]);
     expect(catalog.filter((item) => item.moduleId === "security-assessments")).toEqual([
-      expect.objectContaining({ id: "identity-assessment", enabled: false }),
+      expect.objectContaining({ id: "identity-assessment", enabled: true }),
     ]);
-    expect(catalog.filter((item) => item.moduleId === "security-assessments" && item.enabled)).toEqual([]);
+    expect(catalog.filter((item) => item.moduleId === "security-assessments" && item.enabled)).toHaveLength(1);
+    expect(catalog.filter((item) => item.moduleId === "protection-response")).toEqual([]);
   });
 });

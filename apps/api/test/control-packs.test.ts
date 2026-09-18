@@ -12,7 +12,7 @@ import { createDefaultAssessmentRegistry } from "../src/services/assessment-regi
 import { controlPackContentHash, discoverControlPacks } from "../src/services/control-pack-discovery.js";
 import { ControlPackValidationError, validateControlPackPlan } from "../src/services/control-pack-validation.js";
 import { createLocalAuthHarness } from "./auth-helpers.js";
-import { ImmediateRuntime } from "./helpers.js";
+import { ImmediateRuntime, waitForCondition } from "./helpers.js";
 import { syntheticManifest, syntheticPlugin, temporaryEngine, writeSyntheticPlugin } from "./manifest-fixtures.js";
 
 function control(overrides: Record<string, unknown> = {}) {
@@ -167,10 +167,14 @@ describe("trusted, pinned control-pack discovery", () => {
   it("discovers two interchangeable real development packs and leaves legacy plugins unchanged", () => {
     const plugins = discoverAssessmentManifests();
     const packs = discoverControlPacks(plugins);
-    expect(packs).toHaveLength(2);
+    expect(packs).toHaveLength(3);
     expect(new Set(packs.map((item) => item.assessmentId))).toEqual(new Set(["identity-assessment"]));
-    expect(packs.map((item) => item.pack.id)).toEqual(["cloudops-identity-alternate-dev", "cloudops-identity-dev"]);
-    for (const item of packs) {
+    expect(packs.map((item) => item.pack.id)).toEqual(["cloudops-identity-alternate-dev", "cloudops-identity-dev", "cis-m365-identity-wave1"]);
+    expect(packs[2]!.plan.requiredPermissions).toEqual(["GroupSettings.Read.All", "Policy.Read.All"]);
+    expect(packs[2]!.plan.collectorIds).toEqual(["admin-consent-policy", "authorization-policy", "device-registration-policy", "group-settings"]);
+    expect(packs[2]!.pack.controls).toHaveLength(10);
+    expect(packs[2]!.pack.source.kind).toBe("AUTHORIZED");
+    for (const item of packs.slice(0, 2)) {
       expect(item.pack.source.kind).toBe("DEVELOPMENT");
       expect(item.pack.controls).toHaveLength(3);
       expect(item.plan.collectorIds).toEqual(["fixture-capability-summary", "fixture-users-summary"]);
@@ -307,23 +311,25 @@ describe("trusted, pinned control-pack discovery", () => {
     expect(() => createDefaultAssessmentRegistry(root)).toThrow(/unknown evaluator/);
   });
 
-  it("exposes only generic metadata and refuses public execution of the Identity skeleton", async () => {
+  it("exposes only generic metadata and launches enabled Identity with its selected profile and delegated permissions", async () => {
     const auth = await createLocalAuthHarness();
     const runtime = new ImmediateRuntime();
-    const acquireToken = vi.fn(async () => { throw new Error("Disabled assessment must not acquire Graph credentials"); });
+    const acquireToken = vi.fn(async () => ({ accessToken: "synthetic-graph-token" }));
     const app = await buildApp({ logger: false, tokenValidator: auth.validator, runtime, graphTokenBroker: { acquireToken } });
     const headers = { authorization: `Bearer ${await auth.issueToken()}` };
     try {
       const catalog = await app.inject({ method: "GET", url: "/api/v1/assessments", headers });
       expect(catalog.statusCode).toBe(200);
       expect(catalog.json()).toHaveLength(4);
-      expect(catalog.json()).toContainEqual(expect.objectContaining({ id: "identity-assessment", enabled: false, requiredPermissions: [] }));
+      expect(catalog.json()).toContainEqual(expect.objectContaining({ id: "identity-assessment", enabled: true, requiredPermissions: ["GroupSettings.Read.All", "Policy.Read.All"] }));
       for (const internal of ["fixture-users-summary", "DEV-IDENTITY-", "assessment-sdk.json", "controlPacks", "sha256", "aiFactAllowlist", "scriptPath"]) expect(catalog.body).not.toContain(internal);
-      const execution = await app.inject({ method: "POST", url: "/api/v1/assessments/identity-assessment/executions", headers, payload: { options: {} } });
-      expect(execution.statusCode).toBe(409);
-      expect(execution.json()).toMatchObject({ error: { code: "ASSESSMENT_DISABLED" } });
-      expect(runtime.calls).toHaveLength(0);
-      expect(acquireToken).not.toHaveBeenCalled();
+      const execution = await app.inject({ method: "POST", url: "/api/v1/assessments/identity-assessment/executions", headers, payload: { options: { cisProfile: "E3_L2" } } });
+      expect(execution.statusCode).toBe(202);
+      await waitForCondition(() => runtime.calls.length === 1);
+      expect(runtime.calls[0]!.context.options).toEqual({ cisProfile: "E3_L2" });
+      expect(runtime.calls[0]!.assessment.scriptPath).toMatch(/identity-assessment[/\\]Invoke-Assessment\.ps1$/);
+      expect(acquireToken).toHaveBeenCalledOnce();
+      expect(acquireToken.mock.calls[0]).toEqual([expect.objectContaining({ requiredPermissions: ["GroupSettings.Read.All", "Policy.Read.All"] })]);
     } finally { await app.close(); }
   });
 });

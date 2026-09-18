@@ -112,7 +112,8 @@ export const RecommendationSchema = z.object({
 }).strict().readonly();
 export const ControlPackReferenceSchema = z.object({
   id: SdkIdSchema, version: SdkVersionSchema,
-  file: z.string().max(128).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*\.json$/), sha256: ContentHashSchema,
+  // At most one code-owned version directory; never an arbitrary relative path.
+  file: z.string().max(128).regex(/^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)?[a-z0-9]+(?:-[a-z0-9]+)*\.json$/), sha256: ContentHashSchema,
 }).strict().readonly();
 export const AssessmentDefinitionSchema = z.object({
   schemaVersion: z.literal("cloudops.assessment-definition.v1"), assessmentId: SdkIdSchema,

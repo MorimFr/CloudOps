@@ -19,9 +19,10 @@ const tool = {
 const catalog = [tool, ...[2, 3].map((index) => ({ ...tool, id: `synthetic-tool-${index}`, name: `Ferramenta sintética ${index}`, assessmentOrder: index }))];
 const executionId = "EXE-550e8400-e29b-41d4-a716-446655440000";
 
-async function setup(page: Page, consentRequired = false) {
+async function setup(page: Page, consentRequired = false, assessments = catalog) {
   let creations = 0;
   let downloads = 0;
+  const bodies: unknown[] = [];
   await page.route("**/src/main.tsx", async (route) => {
     const response = await route.fetch({ url: "http://127.0.0.1:5174/browser-tests/harness.tsx" });
     await route.fulfill({ response });
@@ -31,9 +32,10 @@ async function setup(page: Page, consentRequired = false) {
     const url = new URL(request.url());
     const headers = { "access-control-allow-origin": "http://127.0.0.1:5174", "access-control-allow-headers": "authorization,content-type", "cache-control": "no-store" };
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
-    if (url.pathname === "/api/v1/assessments") return route.fulfill({ json: catalog, headers });
+    if (url.pathname === "/api/v1/assessments") return route.fulfill({ json: assessments, headers });
     if (request.method() === "POST") {
       creations++;
+      bodies.push(request.postDataJSON());
       if (consentRequired && creations === 1) return route.fulfill({ status: 403, json: { error: { code: "GRAPH_CONSENT_REQUIRED", message: "Safe consent failure" } }, headers });
       return route.fulfill({ status: 202, json: { executionId, status: "STARTING" }, headers });
     }
@@ -42,12 +44,30 @@ async function setup(page: Page, consentRequired = false) {
       return route.fulfill({ body: Buffer.from("PK\u0003\u0004synthetic-zip"), contentType: "application/zip", headers });
     }
     return route.fulfill({ json: {
-      executionId, assessmentId: tool.id, status: "COMPLETED", stage: "COMPLETED", progress: 100,
+      executionId, assessmentId: assessments[0]!.id, status: "COMPLETED", stage: "COMPLETED", progress: 100,
       createdAt: "2026-09-07T12:00:00Z", startedAt: "2026-09-07T12:00:00Z", completedAt: "2026-09-07T12:00:01Z",
       publicMetrics: { graphReachable: true, requestsCompleted: 1 }, artifactAvailable: downloads === 0, expiresAt: null,
     }, headers });
   });
-  return { creations: () => creations, downloads: () => downloads };
+  return { creations: () => creations, downloads: () => downloads, bodies };
+}
+
+for (const width of [1440, 390]) {
+  test(`Identity lab launch requires profile and preserves it after consent at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 960 });
+    const identity = { ...tool, id: "identity-assessment", name: "Assessment de Identidade", requiredPermissions: ["GroupSettings.Read.All", "Policy.Read.All"], adminConsentRequired: true };
+    const requests = await setup(page, true, [identity]);
+    await page.goto("/azure/secops");
+    const button = page.getByRole("button", { name: "Executar Assessment de Identidade" });
+    await expect(button).toBeDisabled();
+    await page.getByLabel("Perfil CIS", { exact: true }).selectOption("E3_L2");
+    await expect(button).toBeEnabled();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await button.click();
+    await page.getByRole("button", { name: "Conceder permissões" }).click();
+    await expect(page.getByRole("complementary", { name: identity.name }).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+    expect(requests.bodies).toEqual([{ options: { cisProfile: "E3_L2" } }, { options: { cisProfile: "E3_L2" } }]);
+  });
 }
 
 for (const [width, columns] of [[1440, 3], [1100, 2], [390, 1]] as const) {

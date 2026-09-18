@@ -1,0 +1,153 @@
+{
+  "cis-m365-5-1-2-2": {
+    "cisId": "5.1.2.2",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Registro de aplicações permitido a usuários",
+    "description": "O usuário padrão pode registrar aplicações, contrariando a restrição prevista no controle.",
+    "gapLabel": "application-registration-enabled",
+    "fact": "allowedToCreateApps",
+    "sourcePages": [
+      197,
+      199
+    ]
+  },
+  "cis-m365-5-1-2-3": {
+    "cisId": "5.1.2.3",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Criação de tenants permitida a usuários",
+    "description": "O usuário não administrativo pode criar tenants, contrariando a restrição prevista no controle.",
+    "gapLabel": "tenant-creation-enabled",
+    "fact": "allowedToCreateTenants",
+    "sourcePages": [
+      200,
+      202
+    ]
+  },
+  "cis-m365-5-1-3-1": {
+    "cisId": "5.1.3.1",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Criação de grupos de segurança permitida",
+    "description": "A permissão padrão permite criar grupos de segurança e não atende à restrição do controle.",
+    "gapLabel": "security-group-creation-enabled",
+    "fact": "allowedToCreateSecurityGroups",
+    "sourcePages": [
+      210,
+      212
+    ]
+  },
+  "cis-m365-5-1-3-4": {
+    "cisId": "5.1.3.4",
+    "profiles": [
+      "E3 Level 2",
+      "E5 Level 2"
+    ],
+    "gap": "Criação de grupos Microsoft 365 permitida",
+    "description": "A configuração permite criar grupos Microsoft 365. A ausência do template na coleção completa comprova o default não conforme descrito pelo CIS.",
+    "gapLabel": "m365-group-creation-enabled",
+    "fact": "enableGroupCreation",
+    "sourcePages": [
+      217,
+      219
+    ]
+  },
+  "cis-m365-5-1-4-2": {
+    "cisId": "5.1.4.2",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Limite de dispositivos por usuário elevado",
+    "description": "A quota de dispositivos por usuário excede o máximo definido pelo controle.",
+    "gapLabel": "device-quota-exceeded",
+    "fact": "userDeviceQuota",
+    "sourcePages": [
+      224,
+      225
+    ]
+  },
+  "cis-m365-5-1-4-5": {
+    "cisId": "5.1.4.5",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "LAPS desabilitado no tenant",
+    "description": "A habilitação tenant-level do LAPS está desativada. Este teste não verifica implantação ou saúde nos endpoints.",
+    "gapLabel": "laps-disabled",
+    "fact": "lapsEnabled",
+    "sourcePages": [
+      232,
+      234
+    ]
+  },
+  "cis-m365-5-1-4-6": {
+    "cisId": "5.1.4.6",
+    "profiles": [
+      "E3 Level 2",
+      "E5 Level 2"
+    ],
+    "gap": "Recuperação de chaves BitLocker permitida",
+    "description": "O usuário padrão pode recuperar chaves de seus dispositivos; o controle exige restringir essa permissão.",
+    "gapLabel": "bitlocker-recovery-enabled",
+    "fact": "allowedToReadBitlockerKeysForOwnedDevice",
+    "sourcePages": [
+      235,
+      237
+    ]
+  },
+  "cis-m365-5-1-5-2": {
+    "cisId": "5.1.5.2",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Workflow de consentimento desabilitado",
+    "description": "O workflow de solicitações de consentimento administrativo está desativado.",
+    "gapLabel": "admin-consent-disabled",
+    "fact": "adminConsentRequestsEnabled",
+    "sourcePages": [
+      242,
+      244
+    ]
+  },
+  "cis-m365-5-1-6-2": {
+    "cisId": "5.1.6.2",
+    "profiles": [
+      "E3 Level 1",
+      "E5 Level 1"
+    ],
+    "gap": "Convidados com acesso equivalente a membros",
+    "description": "O papel padrão dos convidados tem acesso equivalente ao de membros. O CIS aceita acesso limitado ou restrito.",
+    "gapLabel": "guest-access-unrestricted",
+    "fact": "guestRoleCategory",
+    "sourcePages": [
+      269,
+      271
+    ]
+  },
+  "cis-m365-5-1-6-3": {
+    "cisId": "5.1.6.3",
+    "profiles": [
+      "E3 Level 2",
+      "E5 Level 2"
+    ],
+    "gap": "Convites de convidados excessivamente abertos",
+    "description": "A configuração permite convites por membros comuns ou por todos; o controle limita essa atividade a papéis específicos ou a ninguém.",
+    "gapLabel": "guest-invitations-unrestricted",
+    "fact": "invitationPolicyCategory",
+    "sourcePages": [
+      272,
+      274
+    ]
+  }
+}
+

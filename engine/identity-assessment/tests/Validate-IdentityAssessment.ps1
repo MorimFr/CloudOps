@@ -202,7 +202,7 @@ try { $null = New-IdentityAssessmentHtml $csvModel } catch { $rejected = $true }
 Assert-Condition $rejected 'HTML-bearing DTO was accepted.'
 
 $manifest = ConvertFrom-Json ([System.IO.File]::ReadAllText((Join-Path $pluginRoot 'assessment.json'))) -AsHashtable
-Assert-Condition (-not $manifest.enabled -and $manifest.auth.provider -ceq 'none' -and $manifest.auth.permissions.Count -eq 0) 'Unimplemented production assessment was activated.'
+Assert-Condition ($manifest.enabled -and $manifest.auth.provider -ceq 'microsoft-graph' -and ($manifest.auth.permissions -join ',') -ceq 'GroupSettings.Read.All,Policy.Read.All') 'Wave 1 lab enablement or permission gate changed.'
 $liveFixture = New-IdentityDevelopmentFixture
 $liveFixture.Context.dataSource = 'LIVE'
 $rejected = $false

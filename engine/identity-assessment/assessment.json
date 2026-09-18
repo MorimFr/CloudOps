@@ -2,12 +2,12 @@
   "schemaVersion": "cloudops.assessment.v1",
   "id": "identity-assessment",
   "name": "Assessment de Identidade",
-  "description": "Estrutura de avaliação de identidade em desenvolvimento. A execução pública será habilitada após a publicação de um control pack real autorizado; os packs atuais usam somente dados sintéticos e não são CIS.",
+  "description": "CIS Microsoft 365 Foundations 7.0.0 — Wave 1 de identidade. Até dez controles de configuração, conforme o perfil CIS selecionado. Habilitado para testes de laboratório; cobertura parcial.",
   "provider": "azure",
   "domain": "secops",
   "moduleId": "security-assessments",
   "assessmentOrder": 1,
-  "enabled": false,
+  "enabled": true,
   "visibility": "public",
   "engine": {
     "runtime": "powershell",
@@ -16,9 +16,9 @@
     "maxConcurrentExecutions": 1
   },
   "auth": {
-    "provider": "none",
-    "permissions": [],
-    "adminConsentRequired": false
+    "provider": "microsoft-graph",
+    "permissions": ["GroupSettings.Read.All", "Policy.Read.All"],
+    "adminConsentRequired": true
   },
   "display": {
     "icon": "shield",

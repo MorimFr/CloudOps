@@ -110,6 +110,11 @@
 .workspace-assessments .assessment-description { margin: 0.55rem 0 0.8rem; color: var(--muted); font-size: 0.76rem; line-height: 1.65; }
 .workspace-assessments .permission-list code { font-size: 0.61rem; padding: 0.2rem 0.35rem; color: var(--provider-primary); border-color: var(--provider-border); background: var(--provider-soft); }
 .admin-approval-badge { display: inline-block; margin-top: 0.5rem; font-size: 0.63rem; color: var(--amber); }
+.assessment-options { display: grid; gap: 0.5rem; margin-top: 1rem; min-width: 0; }
+.assessment-options label { font-size: 0.78rem; font-weight: 650; }
+.assessment-options select { width: 100%; min-width: 0; min-height: 42px; padding: 0.6rem; color: var(--text); background: #0c1929; border: 1px solid var(--provider-border); border-radius: 8px; font: inherit; font-size: 0.78rem; }
+.assessment-options select:focus-visible { outline: 2px solid var(--provider-primary); outline-offset: 3px; }
+.assessment-options p { margin: 0; color: var(--muted); font-size: 0.7rem; line-height: 1.6; }
 .workspace-assessments .card-footer { gap: 0.6rem; padding-top: 0.8rem; }
 .card-source { max-width: 60%; color: var(--muted); font-size: 0.61rem; line-height: 1.55; letter-spacing: 0.035em; }
 .workspace-assessments .card-footer .button { min-height: 34px; padding: 0.4rem 0.6rem; font-size: 0.7rem; }

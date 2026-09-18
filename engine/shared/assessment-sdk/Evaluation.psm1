@@ -2,8 +2,9 @@ Set-StrictMode -Version Latest
 Import-Module (Join-Path $PSScriptRoot 'Validation.psm1') -DisableNameChecking
 
 # Defense in depth for reviewed implementations, NOT a hostile-plugin sandbox.
-# No commands, providers, member invocation, CLR types, closures, ambient scopes,
+# No commands, providers, member invocation, arbitrary CLR types, closures, ambient scopes,
 # redirection or dynamic member access are admitted to the evaluator language.
+# Primitive type tests (bool/int/long) are allowed; casts and type members are not.
 function Assert-CloudOpsPureScript {
     param([scriptblock] $Implementation, [string[]] $ParameterNames = @('Control','State','Context'))
     $text = $Implementation.ToString()
@@ -25,16 +26,19 @@ function Assert-CloudOpsPureScript {
         }
         if ($node -is [System.Management.Automation.Language.ForEachStatementAst]) { [void]$locals.Add($node.Variable.VariablePath.UserPath) }
     }
-    $allowed = @('ScriptBlockAst','ParamBlockAst','ParameterAst','NamedBlockAst','StatementBlockAst','PipelineAst','CommandExpressionAst','ConstantExpressionAst','StringConstantExpressionAst','VariableExpressionAst','AssignmentStatementAst','BinaryExpressionAst','UnaryExpressionAst','HashtableAst','ArrayExpressionAst','ArrayLiteralAst','IndexExpressionAst','ParenExpressionAst','IfStatementAst','ReturnStatementAst','ForEachStatementAst','WhileStatementAst','BreakStatementAst','ContinueStatementAst')
+    $allowed = @('ScriptBlockAst','ParamBlockAst','ParameterAst','NamedBlockAst','StatementBlockAst','PipelineAst','CommandExpressionAst','ConstantExpressionAst','StringConstantExpressionAst','VariableExpressionAst','AssignmentStatementAst','BinaryExpressionAst','UnaryExpressionAst','HashtableAst','ArrayExpressionAst','ArrayLiteralAst','IndexExpressionAst','ParenExpressionAst','IfStatementAst','ReturnStatementAst','ForEachStatementAst','WhileStatementAst','BreakStatementAst','ContinueStatementAst','TypeExpressionAst')
     foreach ($node in $nodes) {
         Assert-CloudOpsSdkCondition ($node.GetType().Name -cin $allowed)
+        if ($node -is [System.Management.Automation.Language.TypeExpressionAst]) {
+            Assert-CloudOpsSdkCondition ($node.TypeName.FullName -cin @('bool','int','long'))
+        }
         if ($node -is [System.Management.Automation.Language.ScriptBlockAst]) { Assert-CloudOpsSdkCondition ([object]::ReferenceEquals($node,$ast)) }
         if ($node -is [System.Management.Automation.Language.VariableExpressionAst]) {
             $name = $node.VariablePath.UserPath
             Assert-CloudOpsSdkCondition ($name -cmatch '^[A-Za-z][A-Za-z0-9]*$' -and $locals.Contains($name) -and $name -inotmatch '^(?:ExecutionContext|PS.*|Host|Error|args|input|this|HOME|PID|PWD|OFS|ShellId|MyInvocation|Matches)$')
         }
         if ($node -is [System.Management.Automation.Language.BinaryExpressionAst]) {
-            Assert-CloudOpsSdkCondition ($node.Operator.ToString() -cin @('Ieq','Ine','Igt','Ige','Ilt','Ile','Ceq','Cne','Cgt','Cge','Clt','Cle','And','Or','Xor','Plus','Minus','Multiply','Divide','Rem','Icontains','Inotcontains','Ccontains','Cnotcontains','Iin','Inotin','Cin','Cnotin'))
+            Assert-CloudOpsSdkCondition ($node.Operator.ToString() -cin @('Ieq','Ine','Igt','Ige','Ilt','Ile','Ceq','Cne','Cgt','Cge','Clt','Cle','And','Or','Xor','Plus','Minus','Multiply','Divide','Rem','Icontains','Inotcontains','Ccontains','Cnotcontains','Iin','Inotin','Cin','Cnotin','Is','IsNot'))
         }
         if ($node -is [System.Management.Automation.Language.UnaryExpressionAst]) { Assert-CloudOpsSdkCondition ($node.TokenKind.ToString() -cin @('Not','Exclaim','Minus','Plus','PlusPlus','MinusMinus','PostfixPlusPlus','PostfixMinusMinus')) }
     }

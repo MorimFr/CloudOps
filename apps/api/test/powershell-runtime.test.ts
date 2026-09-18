@@ -7,6 +7,7 @@ import type {
 } from "node:child_process";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SanitizedExecutiveSummaryInputSchema, type AiExecutiveSummary } from "@cloudops/contracts";
 
 import type { RegisteredAssessment } from "../src/services/assessment-registry.js";
 import {
@@ -55,6 +56,74 @@ const assessment: RegisteredAssessment = {
 function asChild(child: FakeChild): ChildProcessWithoutNullStreams {
   return child as unknown as ChildProcessWithoutNullStreams;
 }
+
+const summaryInput = SanitizedExecutiveSummaryInputSchema.parse({ framework: "cis-m365", frameworkVersion: "7.0.0", profile: "E3_L1",
+  controlCounts: { total: 1, passed: 0, failed: 1, manual: 0, unknown: 0, error: 0, notApplicable: 0 },
+  severityCounts: { critical: 0, high: 1, medium: 0, low: 0 },
+  findings: [{ controlId: "cis-m365-5-1-2-2", area: "applications-consent", status: "FAIL", severity: "HIGH", facts: {}, gapLabel: "application-registration-enabled" }],
+});
+const aiSummary = { executiveSummary: "Narrativa sintética.", keyRiskThemes: [], priorityNarrative: "Prioridade consultiva.", managementConclusion: "Validar manualmente." };
+describe("Identity private summary protocol", () => {
+  it.each(["valid", "unconfigured", "unavailable", "invalid", "unsanitized"])("completes the artifact with %s AI without public payloads", async (mode) => {
+    const child = new FakeChild(); const publicMetrics = vi.fn(); const progress = vi.fn();
+    let sentContext = ""; let reply: unknown;
+    const summarize = vi.fn(async () => {
+      if (mode === "unavailable") throw new Error("private diagnostic must not escape");
+      return mode === "invalid" ? { ...aiSummary, status: "PASS" } as AiExecutiveSummary : aiSummary;
+    });
+    child.stdin.on("data", (chunk: Buffer) => {
+      const message = JSON.parse(chunk.toString("utf8")) as { type?: string; summary?: unknown };
+      if (message.type === "aiExecutiveSummaryResponse") {
+        reply = message.summary;
+        child.stdout.write(Buffer.from([0x50, 0x4b, 0x03, 0x04])); child.exitCode = 0;
+        queueMicrotask(() => child.emit("close", 0, null));
+      } else sentContext = chunk.toString("utf8");
+    });
+    const runtime = new PowerShellRuntime({
+      ...(mode === "unconfigured" ? {} : { executiveSummaryProvider: { summarize } }),
+      spawnProcess: () => {
+        queueMicrotask(() => {
+          child.emit("spawn");
+          child.stderr.write(JSON.stringify({ type: "aiExecutiveSummaryRequest", input: mode === "unsanitized" ? { ...summaryInput, tenantId: "canary" } : summaryInput }) + "\n");
+        }); return asChild(child);
+      },
+    });
+    const result = await runtime.execute({ assessment: { ...assessment, id: "identity-assessment", timeoutMs: 1000 },
+      context: { executionId: "EXE-synthetic", assessmentId: "identity-assessment", options: { cisProfile: "E3_L1" } }, signal: new AbortController().signal,
+      onStarted: vi.fn(), onProgress: progress, onPublicMetrics: publicMetrics });
+    expect(sentContext.endsWith("\n")).toBe(true);
+    expect(result.artifact.length).toBe(4);
+    expect(reply).toEqual(mode === "valid" ? aiSummary : null);
+    expect(publicMetrics).not.toHaveBeenCalled(); expect(progress).not.toHaveBeenCalled();
+    expect(summarize).toHaveBeenCalledTimes(["unsanitized", "unconfigured"].includes(mode) ? 0 : 1);
+  });
+  it("cancels a pending summary with the assessment and ignores a late provider", async () => {
+    const child = new FakeChild(); const cancel = new AbortController(); let aiSignal: AbortSignal | undefined;
+    let finishProvider: (value: AiExecutiveSummary) => void = () => undefined;
+    const summarize = vi.fn((_input, ctx: { signal: AbortSignal }) => {
+      aiSignal = ctx.signal; return new Promise<AiExecutiveSummary>((resolve) => { finishProvider = resolve; });
+    });
+    const runtime = new PowerShellRuntime({ executiveSummaryProvider: { summarize }, spawnProcess: () => {
+      queueMicrotask(() => { child.emit("spawn"); child.stderr.write(JSON.stringify({ type: "aiExecutiveSummaryRequest", input: summaryInput }) + "\n"); }); return asChild(child);
+    } });
+    const pending = runtime.execute({ assessment: { ...assessment, id: "identity-assessment", timeoutMs: 1000 }, context: { executionId: "EXE-synthetic", assessmentId: "identity-assessment", options: {} },
+      signal: cancel.signal, onStarted: vi.fn(), onProgress: vi.fn() });
+    await Promise.resolve(); await Promise.resolve(); cancel.abort();
+    await expect(pending).rejects.toMatchObject({ code: "ASSESSMENT_CANCELLED" });
+    expect(aiSignal?.aborted).toBe(true); finishProvider(aiSummary);
+    expect(child.killed).toBe(true);
+  });
+  it.each(["foreign", "duplicate"])("rejects %s private events without extra provider calls", async (mode) => {
+    const child = new FakeChild(); const summarize = vi.fn(async () => aiSummary);
+    const runtime = new PowerShellRuntime({ executiveSummaryProvider: { summarize }, spawnProcess: () => {
+      queueMicrotask(() => { child.emit("spawn"); const line = JSON.stringify({ type: "aiExecutiveSummaryRequest", input: summaryInput }) + "\n"; child.stderr.write(mode === "duplicate" ? line + line : line); }); return asChild(child);
+    } });
+    const id = mode === "foreign" ? "hello-world" : "identity-assessment";
+    await expect(runtime.execute({ assessment: { ...assessment, id }, context: { executionId: "EXE-synthetic", assessmentId: id, options: {} },
+      signal: new AbortController().signal, onStarted: vi.fn(), onProgress: vi.fn() })).rejects.toMatchObject({ code: "INVALID_CONTROL_OUTPUT" });
+    expect(summarize.mock.calls.length).toBeLessThanOrEqual(mode === "foreign" ? 0 : 1);
+  });
+});
 
 afterEach(() => {
   vi.useRealTimers();

@@ -40,7 +40,7 @@ export type AssessmentAuthProvider = z.infer<
   typeof AssessmentAuthProviderSchema
 >;
 
-export const GRAPH_PERMISSIONS = ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"] as const;
+export const GRAPH_PERMISSIONS = ["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All", "GroupSettings.Read.All", "Policy.Read.All"] as const;
 export const GraphPermissionSchema = z.enum(GRAPH_PERMISSIONS);
 export type GraphPermission = z.infer<typeof GraphPermissionSchema>;
 

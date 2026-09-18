@@ -303,8 +303,12 @@ describe("Control packs, registered implementations and permission declarations"
     expect(EvaluatorDefinitionSchema.safeParse(evaluator({ script: "./evaluator.ps1" })).success).toBe(false);
   });
 
-  it.each(["../pack.json", "/tmp/pack.json", "C:\\pack.json", "nested/pack.json", "pack.ps1", "pack.json:stream", "https://example.invalid/pack.json", "pack%2ejson", "pack--name.json"])("rejects non-leaf control-pack file reference %s", (file) => {
+  it.each(["../pack.json", "/tmp/pack.json", "C:\\pack.json", "nested/deeper/pack.json", "nested/../pack.json", "nested\\pack.json", "pack.ps1", "pack.json:stream", "https://example.invalid/pack.json", "pack%2ejson", "pack--name.json"])("rejects escaping or unsupported control-pack file reference %s", (file) => {
     expect(ControlPackReferenceSchema.safeParse(packReference({ file })).success).toBe(false);
+  });
+
+  it("accepts one code-owned version directory", () => {
+    expect(ControlPackReferenceSchema.safeParse(packReference({ file: "cis-m365-7-0-0/identity-wave1.json" })).success).toBe(true);
   });
 
   it("validates authentication without tying generic collectors to Microsoft Graph", () => {

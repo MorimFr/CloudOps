@@ -69,6 +69,12 @@ const helloAssessment = {
   adminConsentRequired: false,
 } as const;
 
+const identityAssessment = {
+  ...graphAssessment, id: "identity-assessment", name: "Assessment de Identidade",
+  moduleId: "security-assessments", moduleName: "Assessments de segurança", moduleOrder: 1,
+  requiredPermissions: ["GroupSettings.Read.All", "Policy.Read.All"], adminConsentRequired: true,
+} as const;
+
 function authState(
   overrides: Partial<CloudOpsAuthState> = {},
 ): CloudOpsAuthState {
@@ -206,6 +212,39 @@ describe("CloudOps multicloud application", () => {
     expect(requestConsent).toHaveBeenCalledOnce();
     expect(getToken).toHaveBeenCalledWith({ forceRefresh: true });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it.each(["E3_L1", "E3_L2", "E5_L1", "E5_L2"])("requires an explicit CIS profile and sends %s for Identity", async (cisProfile) => {
+    mockedListAssessments.mockResolvedValueOnce([identityAssessment]);
+    renderApp("/azure/secops");
+    const button = await screen.findByRole("button", { name: "Executar Assessment de Identidade" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(mockedCreateExecution).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Perfil CIS"), { target: { value: cisProfile } });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => expect(mockedCreateExecution).toHaveBeenCalledWith(
+      { assessmentId: "identity-assessment", options: { cisProfile } }, getToken, expect.anything(),
+    ));
+  });
+
+  it("preserves the original CIS profile through the single consent retry", async () => {
+    mockedListAssessments.mockResolvedValueOnce([identityAssessment]);
+    mockedCreateExecution.mockRejectedValueOnce(new CloudOpsApiError("safe", 403, "GRAPH_CONSENT_REQUIRED"));
+    renderApp("/azure/secops");
+    const profile = await screen.findByLabelText("Perfil CIS");
+    fireEvent.change(profile, { target: { value: "E5_L2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Executar Assessment de Identidade" }));
+    await screen.findByRole("dialog", { name: "Permissões adicionais necessárias" });
+    // Changing the underlying card must not change the already pending request.
+    fireEvent.change(profile, { target: { value: "E3_L1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Conceder permissões" }));
+    await waitFor(() => expect(mockedCreateExecution).toHaveBeenCalledTimes(2));
+    expect(mockedCreateExecution.mock.calls.map(([request]) => request)).toEqual([
+      { assessmentId: "identity-assessment", options: { cisProfile: "E5_L2" } },
+      { assessmentId: "identity-assessment", options: { cisProfile: "E5_L2" } },
+    ]);
   });
 
   it("does not loop after consent succeeds but the single retry is still denied", async () => {

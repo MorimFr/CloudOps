@@ -155,7 +155,7 @@ function Assert-CloudOpsSdkDto {
             $registeredPacks = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
             foreach ($pack in $v.controlPacks) {
                 Assert-CloudOpsSdkFields $pack @('id','version','file','sha256'); Assert-CloudOpsSdkId $pack.id; Assert-CloudOpsSdkVersion $pack.version
-                Assert-CloudOpsSdkCondition ($pack.file -is [string] -and $pack.file.Length -le 128 -and $pack.file -cmatch '^[a-z0-9]+(?:-[a-z0-9]+)*\.json$')
+                Assert-CloudOpsSdkCondition ($pack.file -is [string] -and $pack.file.Length -le 128 -and $pack.file -cmatch '^(?:[a-z0-9]+(?:-[a-z0-9]+)*/)?[a-z0-9]+(?:-[a-z0-9]+)*\.json$')
                 Assert-CloudOpsSdkCondition ($pack.sha256 -is [string] -and $pack.sha256 -cmatch '^[a-f0-9]{64}$')
                 Assert-CloudOpsSdkCondition ($registeredPacks.Add($pack.id + '@' + $pack.version))
             }

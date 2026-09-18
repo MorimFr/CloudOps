@@ -52,6 +52,9 @@ jobs:
       - name: Unit tests
         run: npm run test
 
+      - name: Validate CIS engineering blueprint (offline, no runtime pack)
+        run: npm run cis:validate && npm run test:cis
+
       - name: Install test browser
         run: npx playwright install --with-deps chromium
 
@@ -113,7 +116,7 @@ jobs:
           cloudops-development:ci pwsh -NoLogo -NoProfile -NonInteractive
           -File engine/tests/Validate-InactiveUsers.ps1 -ScaleUsers 10000
 
-      - name: Authenticated HTTP Hello World E2E with synthetic local identity
+      - name: Authenticated HTTP and Wave 1 private AI exchange E2E (synthetic)
         run: >-
           docker run --rm --network none
           --cap-drop ALL --security-opt no-new-privileges:true
@@ -147,3 +150,16 @@ jobs:
         run: npm run test:reports
         env:
           CLOUDOPS_TEST_IMAGE: cloudops-runtime:ci
+
+      - name: Validate Identity Wave 1, collectors and Report Standard (offline)
+        run: |
+          for validator in Validate-Wave1 Validate-Wave1Collectors Validate-Wave1Report; do
+            docker run --rm --network none --read-only \
+              --cap-drop ALL --security-opt no-new-privileges:true \
+              --tmpfs /tmp:rw,noexec,nosuid,nodev,size=32m \
+              --env HOME=/tmp/cloudops-home \
+              --env XDG_CACHE_HOME=/tmp/cloudops-home/.cache \
+              --env PSModuleAnalysisCachePath=/dev/null \
+              cloudops-development:ci pwsh -NoLogo -NoProfile -NonInteractive \
+              -File "engine/identity-assessment/tests/$validator.ps1"
+          done

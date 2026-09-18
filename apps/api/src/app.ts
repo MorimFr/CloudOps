@@ -8,6 +8,7 @@ import Fastify, {
 import { ZodError } from "zod";
 
 import { loadConfig, type ApiConfig } from "./config.js";
+import { FoundryExecutiveSummaryProvider } from "./services/executive-summary-provider.js";
 import { CloudOpsError } from "./errors.js";
 import { EntraAuth } from "./auth/entra-auth.js";
 import {
@@ -120,6 +121,7 @@ export async function buildApp(
   const runtime =
     options.runtime ??
     new PowerShellRuntime({
+      ...(config.aiSummary ? { executiveSummaryProvider: new FoundryExecutiveSummaryProvider(config.aiSummary) } : {}),
       executable: config.powershellExecutable,
       maxArtifactBytes: config.maxArtifactBytes,
       // The internal context also carries a bounded delegated Graph token and

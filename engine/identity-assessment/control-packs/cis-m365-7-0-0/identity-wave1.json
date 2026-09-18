@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "cloudops.control-pack.v1",
+  "id": "cis-m365-identity-wave1",
+  "name": "CIS Microsoft 365 Foundations 7.0.0 — Identity Wave 1",
+  "framework": "cis-m365",
+  "frameworkVersion": "7.0.0",
+  "controlPackVersion": "1.0.0",
+  "scope": [
+    "applications-consent",
+    "user-lifecycle",
+    "identity-governance",
+    "device-identity",
+    "guest-external-identity"
+  ],
+  "source": {
+    "kind": "AUTHORIZED",
+    "reference": "Locally authorized CIS Microsoft 365 Foundations Benchmark 7.0.0; source SHA256 17bc3e4e19b274c481287c35f739a12f0312da2322a5395b9927c39080da105b. Partial Wave 1 only; not CIS certification."
+  },
+  "controls": [
+    {
+      "id": "cis-m365-5-1-2-2",
+      "title": "Ensure users cannot register applications",
+      "area": "applications-consent",
+      "order": 1,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-2-2",
+      "severity": "HIGH",
+      "recommendationId": "cis-m365-5-1-2-2-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-2-3",
+      "title": "Ensure 'Restrict non-admin users from creating tenants' is set to 'Yes'",
+      "area": "user-lifecycle",
+      "order": 2,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-2-3",
+      "severity": "MEDIUM",
+      "recommendationId": "cis-m365-5-1-2-3-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-3-1",
+      "title": "Ensure users cannot create security groups",
+      "area": "identity-governance",
+      "order": 3,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-3-1",
+      "severity": "MEDIUM",
+      "recommendationId": "cis-m365-5-1-3-1-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-3-4",
+      "title": "Ensure that 'Users can create Microsoft 365 groups in Azure portals, API or PowerShell' is set to 'No'",
+      "area": "identity-governance",
+      "order": 4,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "group-settings"
+      ],
+      "evaluator": "cis-m365-5-1-3-4",
+      "severity": "LOW",
+      "recommendationId": "cis-m365-5-1-3-4-remediation",
+      "parameters": {
+        "cisLevel": 2
+      }
+    },
+    {
+      "id": "cis-m365-5-1-4-2",
+      "title": "Ensure the maximum number of devices per user is limited",
+      "area": "device-identity",
+      "order": 5,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "device-registration-policy"
+      ],
+      "evaluator": "cis-m365-5-1-4-2",
+      "severity": "LOW",
+      "recommendationId": "cis-m365-5-1-4-2-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-4-5",
+      "title": "Ensure Local Administrator Password Solution is enabled",
+      "area": "device-identity",
+      "order": 6,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "device-registration-policy"
+      ],
+      "evaluator": "cis-m365-5-1-4-5",
+      "severity": "HIGH",
+      "recommendationId": "cis-m365-5-1-4-5-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-4-6",
+      "title": "Ensure users are restricted from recovering BitLocker keys",
+      "area": "device-identity",
+      "order": 7,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-4-6",
+      "severity": "HIGH",
+      "recommendationId": "cis-m365-5-1-4-6-remediation",
+      "parameters": {
+        "cisLevel": 2
+      }
+    },
+    {
+      "id": "cis-m365-5-1-5-2",
+      "title": "Ensure the admin consent workflow is enabled",
+      "area": "applications-consent",
+      "order": 8,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "admin-consent-policy"
+      ],
+      "evaluator": "cis-m365-5-1-5-2",
+      "severity": "MEDIUM",
+      "recommendationId": "cis-m365-5-1-5-2-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-6-2",
+      "title": "Ensure that guest user access is restricted",
+      "area": "guest-external-identity",
+      "order": 9,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-6-2",
+      "severity": "HIGH",
+      "recommendationId": "cis-m365-5-1-6-2-remediation",
+      "parameters": {
+        "cisLevel": 1
+      }
+    },
+    {
+      "id": "cis-m365-5-1-6-3",
+      "title": "Ensure guest user invitations are limited",
+      "area": "guest-external-identity",
+      "order": 10,
+      "evaluationType": "AUTOMATED",
+      "collectorRequirements": [
+        "authorization-policy"
+      ],
+      "evaluator": "cis-m365-5-1-6-3",
+      "severity": "MEDIUM",
+      "recommendationId": "cis-m365-5-1-6-3-remediation",
+      "parameters": {
+        "cisLevel": 2
+      }
+    }
+  ]
+}
+

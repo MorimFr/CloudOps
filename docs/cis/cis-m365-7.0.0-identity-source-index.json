@@ -1,0 +1,2448 @@
+{
+  "schemaVersion": "cloudops.cis-source-index.v1",
+  "benchmarkName": "CIS Microsoft 365 Foundations Benchmark",
+  "benchmarkVersion": "7.0.0",
+  "benchmarkDate": "2026-05-20",
+  "sourceFile": "CIS_Microsoft_365_Foundations_Benchmark_v7.0.0.pdf",
+  "sourceSha256": "17bc3e4e19b274c481287c35f739a12f0312da2322a5395b9927c39080da105b",
+  "pdfPages": 628,
+  "pageNumbering": "Printed benchmark page; PDF viewer one-based page = source page + 1.",
+  "controls": [
+    {
+      "cisId": "1.1.1",
+      "title": "Ensure Administrative accounts are cloud-only",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.1",
+      "sourcePageStart": 21,
+      "sourcePageEnd": 23,
+      "auditPageStart": 22,
+      "remediationPageStart": 22,
+      "cisExamplePermissions": [
+        "RoleManagement.Read.Directory",
+        "User.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.1.2",
+      "title": "Ensure two emergency access accounts have been defined",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.1",
+      "sourcePageStart": 24,
+      "sourcePageEnd": 27,
+      "auditPageStart": 25,
+      "remediationPageStart": 26,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "1.1.3",
+      "title": "Ensure that between two and four global admins are designated",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.1",
+      "sourcePageStart": 28,
+      "sourcePageEnd": 32,
+      "auditPageStart": 29,
+      "remediationPageStart": 31,
+      "cisExamplePermissions": [
+        "Directory.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.1.4",
+      "title": "Ensure administrative accounts use licenses with a reduced application footprint",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.1",
+      "sourcePageStart": 33,
+      "sourcePageEnd": 37,
+      "auditPageStart": 34,
+      "remediationPageStart": 36,
+      "cisExamplePermissions": [
+        "RoleManagement.Read.Directory",
+        "User.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.2.1",
+      "title": "Ensure that only organizationally managed/approved public groups exist",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.2",
+      "sourcePageStart": 39,
+      "sourcePageEnd": 41,
+      "auditPageStart": 40,
+      "remediationPageStart": 40,
+      "cisExamplePermissions": [
+        "Group.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.2.2",
+      "title": "Ensure sign-in to shared mailboxes is blocked",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.2",
+      "sourcePageStart": 42,
+      "sourcePageEnd": 45,
+      "auditPageStart": 43,
+      "remediationPageStart": 44,
+      "cisExamplePermissions": [
+        "User.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.1",
+      "title": "Ensure the 'Password expiration policy' is set to 'Set passwords to never expire (recommended)'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 47,
+      "sourcePageEnd": 49,
+      "auditPageStart": 48,
+      "remediationPageStart": 48,
+      "cisExamplePermissions": [
+        "Domain.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.2",
+      "title": "Ensure 'Idle session timeout' is set to '3 hours (or less)' for unmanaged devices",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 50,
+      "sourcePageEnd": 55,
+      "auditPageStart": 51,
+      "remediationPageStart": 54,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.3",
+      "title": "Ensure 'External sharing' of calendars is not available",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 56,
+      "sourcePageEnd": 58,
+      "auditPageStart": 56,
+      "remediationPageStart": 57,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "1.3.4",
+      "title": "Ensure 'User owned apps and services' is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 59,
+      "sourcePageEnd": 62,
+      "auditPageStart": 60,
+      "remediationPageStart": 61,
+      "cisExamplePermissions": [
+        "OrgSettings-AppsAndServices.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.5",
+      "title": "Ensure internal phishing protection for Forms is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 63,
+      "sourcePageEnd": 64,
+      "auditPageStart": 63,
+      "remediationPageStart": 64,
+      "cisExamplePermissions": [
+        "OrgSettings-Forms.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.6",
+      "title": "Ensure the customer lockbox feature is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 65,
+      "sourcePageEnd": 66,
+      "auditPageStart": 65,
+      "remediationPageStart": 66,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "1.3.7",
+      "title": "Ensure 'third-party storage services' are restricted in 'Microsoft 365 on the web'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 67,
+      "sourcePageEnd": 70,
+      "auditPageStart": 68,
+      "remediationPageStart": 69,
+      "cisExamplePermissions": [
+        "Application.Read.All"
+      ]
+    },
+    {
+      "cisId": "1.3.8",
+      "title": "Ensure that Sways cannot be shared with people outside of your organization",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 71,
+      "sourcePageEnd": 72,
+      "auditPageStart": 71,
+      "remediationPageStart": 72,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "1.3.9",
+      "title": "Ensure shared bookings pages are restricted to select users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "1.3",
+      "sourcePageStart": 73,
+      "sourcePageEnd": 75,
+      "auditPageStart": 74,
+      "remediationPageStart": 74,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.1",
+      "title": "Ensure Safe Links for Office Applications is Enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 78,
+      "sourcePageEnd": 83,
+      "auditPageStart": 79,
+      "remediationPageStart": 81,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.2",
+      "title": "Ensure the Common Attachment Types Filter is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 84,
+      "sourcePageEnd": 87,
+      "auditPageStart": 85,
+      "remediationPageStart": 86,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.3",
+      "title": "Ensure notifications for internal users sending malware is Enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 88,
+      "sourcePageEnd": 91,
+      "auditPageStart": 89,
+      "remediationPageStart": 90,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.4",
+      "title": "Ensure Safe Attachments policy is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 92,
+      "sourcePageEnd": 95,
+      "auditPageStart": 93,
+      "remediationPageStart": 94,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.5",
+      "title": "Ensure Safe Attachments for SharePoint, OneDrive, and Microsoft Teams is Enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 96,
+      "sourcePageEnd": 98,
+      "auditPageStart": 96,
+      "remediationPageStart": 97,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.6",
+      "title": "Ensure Exchange Online Spam Policies are set to notify administrators",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 99,
+      "sourcePageEnd": 101,
+      "auditPageStart": 99,
+      "remediationPageStart": 100,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.7",
+      "title": "Ensure that an anti-phishing policy has been created",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 102,
+      "sourcePageEnd": 107,
+      "auditPageStart": 103,
+      "remediationPageStart": 105,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.8",
+      "title": "Ensure that SPF records are published for all Exchange Domains",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 108,
+      "sourcePageEnd": 111,
+      "auditPageStart": 109,
+      "remediationPageStart": 111,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.9",
+      "title": "Ensure that DKIM is enabled for all Exchange Online Domains",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 112,
+      "sourcePageEnd": 115,
+      "auditPageStart": 113,
+      "remediationPageStart": 115,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.10",
+      "title": "Ensure DMARC records for all Exchange Online domains are published",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 116,
+      "sourcePageEnd": 120,
+      "auditPageStart": 117,
+      "remediationPageStart": 119,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.11",
+      "title": "Ensure comprehensive attachment filtering is applied",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 121,
+      "sourcePageEnd": 127,
+      "auditPageStart": 122,
+      "remediationPageStart": 125,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.12",
+      "title": "Ensure the connection filter IP allow list is not used",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 128,
+      "sourcePageEnd": 130,
+      "auditPageStart": 129,
+      "remediationPageStart": 129,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.13",
+      "title": "Ensure the connection filter safe list is off",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 131,
+      "sourcePageEnd": 133,
+      "auditPageStart": 132,
+      "remediationPageStart": 132,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.14",
+      "title": "Ensure inbound anti-spam policies do not contain allowed domains",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 134,
+      "sourcePageEnd": 136,
+      "auditPageStart": 135,
+      "remediationPageStart": 135,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.1.15",
+      "title": "Ensure outbound anti-spam message limits are in place",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.1",
+      "sourcePageStart": 137,
+      "sourcePageEnd": 140,
+      "auditPageStart": 138,
+      "remediationPageStart": 139,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.2.1",
+      "title": "Ensure emergency access account activity is monitored",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.2",
+      "sourcePageStart": 142,
+      "sourcePageEnd": 144,
+      "auditPageStart": 143,
+      "remediationPageStart": 143,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.4.1",
+      "title": "Ensure Priority account protection is enabled and configured",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.4",
+      "sourcePageStart": 146,
+      "sourcePageEnd": 150,
+      "auditPageStart": 147,
+      "remediationPageStart": 149,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.4.2",
+      "title": "Ensure Priority accounts have 'Strict protection' presets applied",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.4",
+      "sourcePageStart": 151,
+      "sourcePageEnd": 153,
+      "auditPageStart": 152,
+      "remediationPageStart": 153,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.4.3",
+      "title": "Ensure Microsoft Defender for Cloud Apps is enabled and configured",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "2.4",
+      "sourcePageStart": 154,
+      "sourcePageEnd": 156,
+      "auditPageStart": 154,
+      "remediationPageStart": 155,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.4.4",
+      "title": "Ensure Zero-hour auto purge for Microsoft Teams is on",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.4",
+      "sourcePageStart": 157,
+      "sourcePageEnd": 158,
+      "auditPageStart": 157,
+      "remediationPageStart": 158,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "2.4.5",
+      "title": "Ensure 'AIR' remediation is enabled",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "2.4",
+      "sourcePageStart": 159,
+      "sourcePageEnd": 161,
+      "auditPageStart": 160,
+      "remediationPageStart": 161,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "3.1.1",
+      "title": "Ensure Microsoft 365 audit log search is Enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "3.1",
+      "sourcePageStart": 164,
+      "sourcePageEnd": 165,
+      "auditPageStart": 164,
+      "remediationPageStart": 165,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "3.2.1",
+      "title": "Ensure DLP policies are enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "3.2",
+      "sourcePageStart": 167,
+      "sourcePageEnd": 169,
+      "auditPageStart": 168,
+      "remediationPageStart": 168,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "3.2.2",
+      "title": "Ensure DLP policies are enabled for Microsoft Teams",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "3.2",
+      "sourcePageStart": 170,
+      "sourcePageEnd": 173,
+      "auditPageStart": 171,
+      "remediationPageStart": 172,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "3.2.3",
+      "title": "Ensure DLP policies are published for Copilot users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "3.2",
+      "sourcePageStart": 174,
+      "sourcePageEnd": 177,
+      "auditPageStart": 175,
+      "remediationPageStart": 176,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "3.3.1",
+      "title": "Ensure Information Protection sensitivity label policies are published",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "3.3",
+      "sourcePageStart": 179,
+      "sourcePageEnd": 181,
+      "auditPageStart": 180,
+      "remediationPageStart": 180,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "4.1",
+      "title": "Ensure devices without a compliance policy are marked 'not compliant'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "4",
+      "sourcePageStart": 184,
+      "sourcePageEnd": 186,
+      "auditPageStart": 185,
+      "remediationPageStart": 185,
+      "cisExamplePermissions": [
+        "DeviceManagementConfiguration.Read.All"
+      ]
+    },
+    {
+      "cisId": "4.2",
+      "title": "Ensure device enrollment for personally owned devices is blocked by default",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "4",
+      "sourcePageStart": 187,
+      "sourcePageEnd": 190,
+      "auditPageStart": 189,
+      "remediationPageStart": 190,
+      "cisExamplePermissions": [
+        "DeviceManagementConfiguration.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.2.1",
+      "title": "Ensure 'Per-user MFA' is disabled",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 194,
+      "sourcePageEnd": 196,
+      "auditPageStart": 195,
+      "remediationPageStart": 195,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.2.2",
+      "title": "Ensure users cannot register applications",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 197,
+      "sourcePageEnd": 199,
+      "auditPageStart": 198,
+      "remediationPageStart": 198,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.2.3",
+      "title": "Ensure 'Restrict non-admin users from creating tenants' is set to 'Yes'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 200,
+      "sourcePageEnd": 202,
+      "auditPageStart": 201,
+      "remediationPageStart": 201,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.2.4",
+      "title": "Ensure access to the Entra admin center is restricted",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 203,
+      "sourcePageEnd": 204,
+      "auditPageStart": 204,
+      "remediationPageStart": 204,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.2.5",
+      "title": "Ensure the option to remain signed in is hidden",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 205,
+      "sourcePageEnd": 206,
+      "auditPageStart": 205,
+      "remediationPageStart": 205,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.2.6",
+      "title": "Ensure 'LinkedIn account connections' is disabled",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.2",
+      "sourcePageStart": 207,
+      "sourcePageEnd": 208,
+      "auditPageStart": 207,
+      "remediationPageStart": 207,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.3.1",
+      "title": "Ensure users cannot create security groups",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.3",
+      "sourcePageStart": 210,
+      "sourcePageEnd": 212,
+      "auditPageStart": 211,
+      "remediationPageStart": 211,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.3.2",
+      "title": "Ensure that 'Restrict user ability to access groups features in My Groups' is set to 'Yes'",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.3",
+      "sourcePageStart": 213,
+      "sourcePageEnd": 214,
+      "auditPageStart": 213,
+      "remediationPageStart": 214,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.3.3",
+      "title": "Ensure that 'Owners can manage group membership requests in My Groups' is set to 'No'",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.3",
+      "sourcePageStart": 215,
+      "sourcePageEnd": 216,
+      "auditPageStart": 215,
+      "remediationPageStart": 215,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.3.4",
+      "title": "Ensure that 'Users can create Microsoft 365 groups in Azure portals, API or PowerShell' is set to 'No'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.3",
+      "sourcePageStart": 217,
+      "sourcePageEnd": 219,
+      "auditPageStart": 218,
+      "remediationPageStart": 218,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.1",
+      "title": "Ensure the ability to join devices to Entra is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 221,
+      "sourcePageEnd": 223,
+      "auditPageStart": 222,
+      "remediationPageStart": 222,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.2",
+      "title": "Ensure the maximum number of devices per user is limited",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 224,
+      "sourcePageEnd": 225,
+      "auditPageStart": 225,
+      "remediationPageStart": 225,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.3",
+      "title": "Ensure the GA role is not added as a local administrator during Entra join",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 226,
+      "sourcePageEnd": 228,
+      "auditPageStart": 227,
+      "remediationPageStart": 227,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.4",
+      "title": "Ensure local administrator assignment is limited during Entra join",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 229,
+      "sourcePageEnd": 231,
+      "auditPageStart": 230,
+      "remediationPageStart": 230,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.5",
+      "title": "Ensure Local Administrator Password Solution is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 232,
+      "sourcePageEnd": 234,
+      "auditPageStart": 233,
+      "remediationPageStart": 233,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.4.6",
+      "title": "Ensure users are restricted from recovering BitLocker keys",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.4",
+      "sourcePageStart": 235,
+      "sourcePageEnd": 237,
+      "auditPageStart": 236,
+      "remediationPageStart": 236,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.5.1",
+      "title": "Ensure user consent to apps accessing company data on their behalf is not allowed",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 239,
+      "sourcePageEnd": 241,
+      "auditPageStart": 240,
+      "remediationPageStart": 240,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.5.2",
+      "title": "Ensure the admin consent workflow is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 242,
+      "sourcePageEnd": 244,
+      "auditPageStart": 243,
+      "remediationPageStart": 243,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.5.3",
+      "title": "Ensure password addition is blocked for applications",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 245,
+      "sourcePageEnd": 249,
+      "auditPageStart": 246,
+      "remediationPageStart": 247,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.5.4",
+      "title": "Ensure password lifetime for applications does not exceed 180 days",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 250,
+      "sourcePageEnd": 254,
+      "auditPageStart": 251,
+      "remediationPageStart": 252,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.5.5",
+      "title": "Ensure new application passwords are system-generated",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 255,
+      "sourcePageEnd": 259,
+      "auditPageStart": 256,
+      "remediationPageStart": 257,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.5.6",
+      "title": "Ensure maximum certificate lifetime for applications does not exceed 180 days",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.5",
+      "sourcePageStart": 260,
+      "sourcePageEnd": 264,
+      "auditPageStart": 261,
+      "remediationPageStart": 262,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.1.6.1",
+      "title": "Ensure that collaboration invitations are sent to allowed domains only",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.6",
+      "sourcePageStart": 266,
+      "sourcePageEnd": 268,
+      "auditPageStart": 267,
+      "remediationPageStart": 268,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.6.2",
+      "title": "Ensure that guest user access is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.6",
+      "sourcePageStart": 269,
+      "sourcePageEnd": 271,
+      "auditPageStart": 270,
+      "remediationPageStart": 270,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.6.3",
+      "title": "Ensure guest user invitations are limited",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.1.6",
+      "sourcePageStart": 272,
+      "sourcePageEnd": 274,
+      "auditPageStart": 272,
+      "remediationPageStart": 273,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.1.8.1",
+      "title": "Ensure that password hash sync is enabled for hybrid deployments",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.1.8",
+      "sourcePageStart": 277,
+      "sourcePageEnd": 279,
+      "auditPageStart": 278,
+      "remediationPageStart": 279,
+      "cisExamplePermissions": [
+        "OnPremDirectorySynchronization.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.2.1",
+      "title": "Ensure multifactor authentication is enabled for all users in administrative roles",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 282,
+      "sourcePageEnd": 285,
+      "auditPageStart": 283,
+      "remediationPageStart": 284,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.2",
+      "title": "Ensure multifactor authentication is enabled for all users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 286,
+      "sourcePageEnd": 289,
+      "auditPageStart": 287,
+      "remediationPageStart": 288,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.3",
+      "title": "Enable Conditional Access policies to block legacy authentication",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 290,
+      "sourcePageEnd": 293,
+      "auditPageStart": 291,
+      "remediationPageStart": 292,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.4",
+      "title": "Ensure Sign-in frequency is enabled and browser sessions are not persistent for Administrative users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 294,
+      "sourcePageEnd": 297,
+      "auditPageStart": 295,
+      "remediationPageStart": 296,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.5",
+      "title": "Ensure 'Phishing-resistant MFA strength' is required for Administrators",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 298,
+      "sourcePageEnd": 301,
+      "auditPageStart": 299,
+      "remediationPageStart": 300,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.6",
+      "title": "Enable Identity Protection user risk policies",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 302,
+      "sourcePageEnd": 305,
+      "auditPageStart": 303,
+      "remediationPageStart": 304,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.7",
+      "title": "Enable Identity Protection sign-in risk policies",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 306,
+      "sourcePageEnd": 309,
+      "auditPageStart": 307,
+      "remediationPageStart": 308,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.8",
+      "title": "Ensure 'sign-in risk' is blocked for medium and high risk",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 310,
+      "sourcePageEnd": 312,
+      "auditPageStart": 311,
+      "remediationPageStart": 312,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.9",
+      "title": "Ensure a managed device is required for authentication",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 313,
+      "sourcePageEnd": 317,
+      "auditPageStart": 315,
+      "remediationPageStart": 316,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.10",
+      "title": "Ensure a managed device is required to register security information",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 318,
+      "sourcePageEnd": 321,
+      "auditPageStart": 319,
+      "remediationPageStart": 320,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.11",
+      "title": "Ensure sign-in frequency for Intune Enrollment is set to 'Every time'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 322,
+      "sourcePageEnd": 325,
+      "auditPageStart": 323,
+      "remediationPageStart": 324,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.12",
+      "title": "Ensure the device code sign-in flow is blocked",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 326,
+      "sourcePageEnd": 328,
+      "auditPageStart": 327,
+      "remediationPageStart": 328,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.13",
+      "title": "Ensure that periodic reauthentication is required for all users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 329,
+      "sourcePageEnd": 331,
+      "auditPageStart": 329,
+      "remediationPageStart": 330,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.14",
+      "title": "Ensure trusted 'named locations' are defined",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 332,
+      "sourcePageEnd": 334,
+      "auditPageStart": 333,
+      "remediationPageStart": 333,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.15",
+      "title": "Ensure exclusionary geographic access controls are utilized",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 335,
+      "sourcePageEnd": 338,
+      "auditPageStart": 336,
+      "remediationPageStart": 337,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.16",
+      "title": "Ensure Token Protection is enforced for session tokens",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 339,
+      "sourcePageEnd": 342,
+      "auditPageStart": 340,
+      "remediationPageStart": 341,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.2.17",
+      "title": "Ensure authentication transfer is blocked",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.2",
+      "sourcePageStart": 343,
+      "sourcePageEnd": 346,
+      "auditPageStart": 344,
+      "remediationPageStart": 345,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.3.1",
+      "title": "Ensure Microsoft Authenticator is configured to protect against MFA fatigue",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 348,
+      "sourcePageEnd": 350,
+      "auditPageStart": 349,
+      "remediationPageStart": 350,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.3.2",
+      "title": "Ensure custom banned passwords lists are used",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 351,
+      "sourcePageEnd": 355,
+      "auditPageStart": 352,
+      "remediationPageStart": 352,
+      "cisExamplePermissions": [
+        "Directory.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.3.3",
+      "title": "Ensure password protection is enabled for on-prem Active Directory",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 356,
+      "sourcePageEnd": 358,
+      "auditPageStart": 357,
+      "remediationPageStart": 357,
+      "cisExamplePermissions": [
+        "Directory.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.3.4",
+      "title": "Ensure all member users are 'MFA capable'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 359,
+      "sourcePageEnd": 362,
+      "auditPageStart": 360,
+      "remediationPageStart": 361,
+      "cisExamplePermissions": [
+        "AuditLog.Read.All",
+        "UserAuthenticationMethod.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.3.5",
+      "title": "Ensure weak authentication methods are disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 363,
+      "sourcePageEnd": 366,
+      "auditPageStart": 364,
+      "remediationPageStart": 365,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.3.6",
+      "title": "Ensure system-preferred multifactor authentication is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 367,
+      "sourcePageEnd": 369,
+      "auditPageStart": 368,
+      "remediationPageStart": 368,
+      "cisExamplePermissions": [
+        "Policy.Read.AuthenticationMethod"
+      ]
+    },
+    {
+      "cisId": "5.2.3.7",
+      "title": "Ensure the email OTP authentication method is disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 370,
+      "sourcePageEnd": 372,
+      "auditPageStart": 371,
+      "remediationPageStart": 371,
+      "cisExamplePermissions": [
+        "Policy.Read.All"
+      ]
+    },
+    {
+      "cisId": "5.2.3.8",
+      "title": "Ensure that Account 'Lockout threshold' is '10' or less",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 373,
+      "sourcePageEnd": 375,
+      "auditPageStart": 374,
+      "remediationPageStart": 374,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.3.9",
+      "title": "Ensure that Account 'Lockout duration in seconds' is at least 60 seconds",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 376,
+      "sourcePageEnd": 378,
+      "auditPageStart": 377,
+      "remediationPageStart": 377,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.3.10",
+      "title": "Ensure Microsoft Authenticator on companion applications is disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.3",
+      "sourcePageStart": 379,
+      "sourcePageEnd": 381,
+      "auditPageStart": 380,
+      "remediationPageStart": 380,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.4.1",
+      "title": "Ensure 'Self service password reset enabled' is set to 'All'",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.4",
+      "sourcePageStart": 383,
+      "sourcePageEnd": 384,
+      "auditPageStart": 384,
+      "remediationPageStart": 384,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.4.2",
+      "title": "Ensure that 2 methods are required for password reset",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.2.4",
+      "sourcePageStart": 385,
+      "sourcePageEnd": 386,
+      "auditPageStart": 386,
+      "remediationPageStart": 386,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.4.3",
+      "title": "Ensure SSPR registration and authentication re-confirmation are required",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.4",
+      "sourcePageStart": 387,
+      "sourcePageEnd": 388,
+      "auditPageStart": 388,
+      "remediationPageStart": 388,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.4.4",
+      "title": "Ensure that users are notified on password resets",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.4",
+      "sourcePageStart": 389,
+      "sourcePageEnd": 390,
+      "auditPageStart": 389,
+      "remediationPageStart": 389,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.2.4.5",
+      "title": "Ensure all admins are notified when other admins reset their password",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.2.4",
+      "sourcePageStart": 391,
+      "sourcePageEnd": 392,
+      "auditPageStart": 391,
+      "remediationPageStart": 392,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.3.1",
+      "title": "Ensure privileged role assignments are activated and not assigned",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "5.3",
+      "sourcePageStart": 394,
+      "sourcePageEnd": 397,
+      "auditPageStart": 395,
+      "remediationPageStart": 396,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.3.2",
+      "title": "Ensure 'Access reviews' for guest users are configured",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.3",
+      "sourcePageStart": 398,
+      "sourcePageEnd": 402,
+      "auditPageStart": 399,
+      "remediationPageStart": 401,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.3.3",
+      "title": "Ensure 'Access reviews' for privileged roles are configured",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.3",
+      "sourcePageStart": 403,
+      "sourcePageEnd": 408,
+      "auditPageStart": 404,
+      "remediationPageStart": 406,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.3.4",
+      "title": "Ensure approval is required for Global Administrator role activation",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.3",
+      "sourcePageStart": 409,
+      "sourcePageEnd": 411,
+      "auditPageStart": 410,
+      "remediationPageStart": 411,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "5.3.5",
+      "title": "Ensure approval is required for Privileged Role Administrator activation",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "5.3",
+      "sourcePageStart": 412,
+      "sourcePageEnd": 414,
+      "auditPageStart": 413,
+      "remediationPageStart": 414,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.1.1",
+      "title": "Ensure 'AuditDisabled' organizationally is set to 'False'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.1",
+      "sourcePageStart": 417,
+      "sourcePageEnd": 418,
+      "auditPageStart": 418,
+      "remediationPageStart": 418,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.1.2",
+      "title": "Ensure mailbox audit actions are configured",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.1",
+      "sourcePageStart": 419,
+      "sourcePageEnd": 425,
+      "auditPageStart": 421,
+      "remediationPageStart": 424,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.1.3",
+      "title": "Ensure 'AuditBypassEnabled' is not enabled on mailboxes",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.1",
+      "sourcePageStart": 426,
+      "sourcePageEnd": 428,
+      "auditPageStart": 427,
+      "remediationPageStart": 427,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.2.1",
+      "title": "Ensure all forms of mail forwarding are blocked and/or disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.2",
+      "sourcePageStart": 430,
+      "sourcePageEnd": 433,
+      "auditPageStart": 431,
+      "remediationPageStart": 432,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.2.2",
+      "title": "Ensure mail transport rules do not whitelist specific domains",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.2",
+      "sourcePageStart": 434,
+      "sourcePageEnd": 436,
+      "auditPageStart": 435,
+      "remediationPageStart": 435,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.2.3",
+      "title": "Ensure email from external senders is identified",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.2",
+      "sourcePageStart": 437,
+      "sourcePageEnd": 438,
+      "auditPageStart": 438,
+      "remediationPageStart": 438,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.3.1",
+      "title": "Ensure users installing Outlook add-ins is not allowed",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "6.3",
+      "sourcePageStart": 440,
+      "sourcePageEnd": 443,
+      "auditPageStart": 441,
+      "remediationPageStart": 442,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.3.2",
+      "title": "Ensure the ability to add personal email accounts and calendars is disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.3",
+      "sourcePageStart": 444,
+      "sourcePageEnd": 446,
+      "auditPageStart": 445,
+      "remediationPageStart": 445,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.5.1",
+      "title": "Ensure modern authentication for Exchange Online is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.5",
+      "sourcePageStart": 449,
+      "sourcePageEnd": 451,
+      "auditPageStart": 450,
+      "remediationPageStart": 450,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.5.2",
+      "title": "Ensure MailTips are enabled for end users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.5",
+      "sourcePageStart": 452,
+      "sourcePageEnd": 453,
+      "auditPageStart": 452,
+      "remediationPageStart": 453,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.5.3",
+      "title": "Ensure additional storage providers are restricted in Outlook on the web",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "6.5",
+      "sourcePageStart": 454,
+      "sourcePageEnd": 455,
+      "auditPageStart": 454,
+      "remediationPageStart": 455,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.5.4",
+      "title": "Ensure SMTP AUTH is disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "6.5",
+      "sourcePageStart": 456,
+      "sourcePageEnd": 457,
+      "auditPageStart": 456,
+      "remediationPageStart": 457,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "6.5.5",
+      "title": "Ensure Direct Send submissions are rejected",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "6.5",
+      "sourcePageStart": 458,
+      "sourcePageEnd": 460,
+      "auditPageStart": 459,
+      "remediationPageStart": 459,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.1",
+      "title": "Ensure modern authentication for SharePoint applications is required",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 463,
+      "sourcePageEnd": 465,
+      "auditPageStart": 464,
+      "remediationPageStart": 464,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.2",
+      "title": "Ensure SharePoint and OneDrive integration with Azure AD B2B is enabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 466,
+      "sourcePageEnd": 467,
+      "auditPageStart": 466,
+      "remediationPageStart": 467,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.3",
+      "title": "Ensure external content sharing is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 468,
+      "sourcePageEnd": 470,
+      "auditPageStart": 469,
+      "remediationPageStart": 469,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.4",
+      "title": "Ensure OneDrive content sharing is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 471,
+      "sourcePageEnd": 473,
+      "auditPageStart": 472,
+      "remediationPageStart": 473,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.5",
+      "title": "Ensure that SharePoint guest users cannot share items they don't own",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 474,
+      "sourcePageEnd": 475,
+      "auditPageStart": 474,
+      "remediationPageStart": 475,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.6",
+      "title": "Ensure SharePoint external sharing is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 476,
+      "sourcePageEnd": 479,
+      "auditPageStart": 477,
+      "remediationPageStart": 478,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.7",
+      "title": "Ensure link sharing is restricted in SharePoint and OneDrive",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 480,
+      "sourcePageEnd": 482,
+      "auditPageStart": 481,
+      "remediationPageStart": 482,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.8",
+      "title": "Ensure external sharing is restricted by security group",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 483,
+      "sourcePageEnd": 486,
+      "auditPageStart": 484,
+      "remediationPageStart": 485,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.9",
+      "title": "Ensure guest access to a site or OneDrive will expire automatically",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 487,
+      "sourcePageEnd": 489,
+      "auditPageStart": 488,
+      "remediationPageStart": 488,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.10",
+      "title": "Ensure reauthentication with verification code is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 490,
+      "sourcePageEnd": 492,
+      "auditPageStart": 491,
+      "remediationPageStart": 491,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.2.11",
+      "title": "Ensure the SharePoint default sharing link permission is set",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "7.2",
+      "sourcePageStart": 493,
+      "sourcePageEnd": 494,
+      "auditPageStart": 493,
+      "remediationPageStart": 494,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "7.3.1",
+      "title": "Ensure Office 365 SharePoint infected files are disallowed for download",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 2"
+      ],
+      "sourceSection": "7.3",
+      "sourcePageStart": 496,
+      "sourcePageEnd": 497,
+      "auditPageStart": 496,
+      "remediationPageStart": 497,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.1.1",
+      "title": "Ensure external file sharing in Teams is enabled for only approved cloud storage services",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.1",
+      "sourcePageStart": 500,
+      "sourcePageEnd": 503,
+      "auditPageStart": 501,
+      "remediationPageStart": 502,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.1.2",
+      "title": "Ensure users can't send emails to a channel email address",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.1",
+      "sourcePageStart": 504,
+      "sourcePageEnd": 506,
+      "auditPageStart": 505,
+      "remediationPageStart": 505,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.2.1",
+      "title": "Ensure external domains are restricted in the Teams admin center",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.2",
+      "sourcePageStart": 508,
+      "sourcePageEnd": 511,
+      "auditPageStart": 509,
+      "remediationPageStart": 510,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.2.2",
+      "title": "Ensure communication with unmanaged Teams users is disabled",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.2",
+      "sourcePageStart": 512,
+      "sourcePageEnd": 515,
+      "auditPageStart": 513,
+      "remediationPageStart": 514,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.2.3",
+      "title": "Ensure external Teams users cannot initiate conversations",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.2",
+      "sourcePageStart": 516,
+      "sourcePageEnd": 520,
+      "auditPageStart": 517,
+      "remediationPageStart": 519,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.2.4",
+      "title": "Ensure the organization cannot communicate with accounts in trial Teams tenants",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.2",
+      "sourcePageStart": 521,
+      "sourcePageEnd": 523,
+      "auditPageStart": 522,
+      "remediationPageStart": 522,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.4.1",
+      "title": "Ensure app permission policies are configured",
+      "cisAssessmentStatus": "MANUAL",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.4",
+      "sourcePageStart": 526,
+      "sourcePageEnd": 527,
+      "auditPageStart": 526,
+      "remediationPageStart": 527,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.1",
+      "title": "Ensure anonymous users can't join a meeting",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 529,
+      "sourcePageEnd": 531,
+      "auditPageStart": 530,
+      "remediationPageStart": 530,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.2",
+      "title": "Ensure anonymous users and dial-in callers can't start a meeting",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 532,
+      "sourcePageEnd": 534,
+      "auditPageStart": 533,
+      "remediationPageStart": 533,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.3",
+      "title": "Ensure only people in my org can bypass the lobby",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 535,
+      "sourcePageEnd": 538,
+      "auditPageStart": 536,
+      "remediationPageStart": 537,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.4",
+      "title": "Ensure users dialing in can't bypass the lobby",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 539,
+      "sourcePageEnd": 540,
+      "auditPageStart": 539,
+      "remediationPageStart": 540,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.5",
+      "title": "Ensure meeting chat does not allow anonymous users",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 541,
+      "sourcePageEnd": 542,
+      "auditPageStart": 541,
+      "remediationPageStart": 542,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.6",
+      "title": "Ensure only organizers and co-organizers can present",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 543,
+      "sourcePageEnd": 544,
+      "auditPageStart": 543,
+      "remediationPageStart": 544,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.7",
+      "title": "Ensure external participants can't give or request control",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 545,
+      "sourcePageEnd": 547,
+      "auditPageStart": 546,
+      "remediationPageStart": 546,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.8",
+      "title": "Ensure external meeting chat is off",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 548,
+      "sourcePageEnd": 549,
+      "auditPageStart": 548,
+      "remediationPageStart": 549,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.5.9",
+      "title": "Ensure meeting recording is off by default",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "8.5",
+      "sourcePageStart": 550,
+      "sourcePageEnd": 552,
+      "auditPageStart": 551,
+      "remediationPageStart": 551,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "8.6.1",
+      "title": "Ensure users can report security concerns in Teams",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E5 Level 1"
+      ],
+      "sourceSection": "8.6",
+      "sourcePageStart": 554,
+      "sourcePageEnd": 557,
+      "auditPageStart": 555,
+      "remediationPageStart": 556,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.1",
+      "title": "Ensure guest user access is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 564,
+      "sourcePageEnd": 566,
+      "auditPageStart": 565,
+      "remediationPageStart": 565,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.2",
+      "title": "Ensure external user invitations are restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 567,
+      "sourcePageEnd": 569,
+      "auditPageStart": 568,
+      "remediationPageStart": 568,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.3",
+      "title": "Ensure guest access to content is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 570,
+      "sourcePageEnd": 572,
+      "auditPageStart": 571,
+      "remediationPageStart": 571,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.4",
+      "title": "Ensure 'Publish to web' is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 573,
+      "sourcePageEnd": 575,
+      "auditPageStart": 574,
+      "remediationPageStart": 574,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.5",
+      "title": "Ensure 'Interact with and share R and Python' visuals is 'Disabled'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 2",
+        "E5 Level 2"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 576,
+      "sourcePageEnd": 577,
+      "auditPageStart": 576,
+      "remediationPageStart": 577,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.6",
+      "title": "Ensure 'Allow users to apply sensitivity labels for content' is 'Enabled'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 578,
+      "sourcePageEnd": 580,
+      "auditPageStart": 579,
+      "remediationPageStart": 579,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.7",
+      "title": "Ensure shareable links are restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 581,
+      "sourcePageEnd": 583,
+      "auditPageStart": 582,
+      "remediationPageStart": 582,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.8",
+      "title": "Ensure enabling of external data sharing is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 584,
+      "sourcePageEnd": 586,
+      "auditPageStart": 585,
+      "remediationPageStart": 585,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.9",
+      "title": "Ensure 'Block ResourceKey Authentication' is 'Enabled'",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 587,
+      "sourcePageEnd": 589,
+      "auditPageStart": 588,
+      "remediationPageStart": 588,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.10",
+      "title": "Ensure access to APIs by service principals is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 590,
+      "sourcePageEnd": 592,
+      "auditPageStart": 591,
+      "remediationPageStart": 591,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.11",
+      "title": "Ensure service principals cannot create and use profiles",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 593,
+      "sourcePageEnd": 595,
+      "auditPageStart": 594,
+      "remediationPageStart": 594,
+      "cisExamplePermissions": []
+    },
+    {
+      "cisId": "9.1.12",
+      "title": "Ensure service principals ability to create workspaces, connections and deployment pipelines is restricted",
+      "cisAssessmentStatus": "AUTOMATED",
+      "profiles": [
+        "E3 Level 1",
+        "E5 Level 1"
+      ],
+      "sourceSection": "9.1",
+      "sourcePageStart": 596,
+      "sourcePageEnd": 598,
+      "auditPageStart": 597,
+      "remediationPageStart": 597,
+      "cisExamplePermissions": []
+    }
+  ]
+}

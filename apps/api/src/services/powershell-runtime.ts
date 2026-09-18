@@ -7,10 +7,12 @@ import { StringDecoder } from "node:string_decoder";
 
 import {
   PowerShellControlEventSchema,
+  AiExecutiveSummaryRequestSchema, AiExecutiveSummarySchema,
   type AssessmentExecutionRequest,
 } from "@cloudops/contracts";
 
 import type { RegisteredAssessment } from "./assessment-registry.js";
+import type { ExecutiveSummaryProvider } from "./executive-summary-provider.js";
 
 export const RUNTIME_ERROR_CODES = [
   "POWERSHELL_UNAVAILABLE",
@@ -84,6 +86,7 @@ type SpawnProcess = (
 ) => ChildProcessWithoutNullStreams;
 
 export interface PowerShellRuntimeOptions {
+  readonly executiveSummaryProvider?: ExecutiveSummaryProvider;
   readonly executable?: string;
   readonly maxArtifactBytes?: number;
   readonly maxControlLineBytes?: number;
@@ -159,6 +162,7 @@ function assessmentFailureCode(
 }
 
 export class PowerShellRuntime implements AssessmentRuntime {
+  readonly #executiveSummaryProvider: ExecutiveSummaryProvider | undefined;
   readonly #executable: string;
   readonly #maxArtifactBytes: number;
   readonly #maxControlLineBytes: number;
@@ -172,6 +176,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
   #healthCheck?: Promise<boolean>;
 
   public constructor(options: PowerShellRuntimeOptions = {}) {
+    this.#executiveSummaryProvider = options.executiveSummaryProvider;
     this.#executable = options.executable ?? "pwsh";
     this.#maxArtifactBytes = options.maxArtifactBytes ?? 25 * 1_024 * 1_024;
     this.#maxControlLineBytes = options.maxControlLineBytes ?? 64 * 1_024;
@@ -190,7 +195,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
       // JavaScript strings cannot be wiped. Keep the serialized token-bearing
       // value in the narrowest possible scope, then retain only a wipeable
       // Buffer for the asynchronous stdin write.
-      const serializedContext = JSON.stringify(input.context);
+      const serializedContext = JSON.stringify(input.context) + (input.assessment.id === "identity-assessment" ? "\n" : "");
       contextBuffer = Buffer.from(serializedContext, "utf8");
     } catch {
       return Promise.reject(
@@ -241,6 +246,8 @@ export class PowerShellRuntime implements AssessmentRuntime {
       let fatalError: PowerShellRuntimeError | undefined;
       let spawned = false;
       let settled = false;
+      let summaryRequested = false;
+      const aiAbort = new AbortController();
 
       let child: ChildProcessWithoutNullStreams;
       try {
@@ -269,6 +276,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
       }
 
       const terminate = (): void => {
+        aiAbort.abort();
         if (child.exitCode === null && child.signalCode === null) {
           try {
             child.kill("SIGKILL");
@@ -301,6 +309,36 @@ export class PowerShellRuntime implements AssessmentRuntime {
           rawEvent = JSON.parse(line);
         } catch {
           fail(new PowerShellRuntimeError("INVALID_CONTROL_OUTPUT"));
+          return;
+        }
+
+        // Private engine/backend exchange: never published through lifecycle,
+        // progress, snapshots, logs or SSE. No credentials enter this payload.
+        if (rawEvent !== null && typeof rawEvent === "object" && "type" in rawEvent
+          && rawEvent.type === "aiExecutiveSummaryRequest") {
+          if (assessment.id !== "identity-assessment" || summaryRequested || settled) {
+            fail(new PowerShellRuntimeError("INVALID_CONTROL_OUTPUT")); return;
+          }
+          summaryRequested = true;
+          const request = AiExecutiveSummaryRequestSchema.safeParse(rawEvent);
+          const aiSignal = AbortSignal.any([signal, aiAbort.signal]);
+          let timer: ReturnType<typeof setTimeout>;
+          let stopBudget: () => void;
+          const budget = new Promise<null>((resolve) => {
+            stopBudget = () => resolve(null);
+            aiSignal.addEventListener("abort", stopBudget, { once: true });
+            timer = setTimeout(() => { aiAbort.abort(); resolve(null); }, 30_000); timer.unref();
+          });
+          const result = request.success && this.#executiveSummaryProvider
+            ? Promise.resolve().then(() => aiSignal.aborted ? null : this.#executiveSummaryProvider!.summarize(request.data.input, { signal: aiSignal })).catch(() => null)
+            : Promise.resolve(null);
+          void Promise.race([result, budget]).then((summary) => {
+            if (settled || fatalError || signal.aborted) return;
+            const validated = AiExecutiveSummarySchema.safeParse(summary);
+            const bytes = Buffer.from(JSON.stringify({ type: "aiExecutiveSummaryResponse", summary: validated.success ? validated.data : null }) + "\n", "utf8");
+            try { child.stdin.end(bytes, () => bytes.fill(0)); }
+            catch { bytes.fill(0); fail(new PowerShellRuntimeError("ASSESSMENT_EXECUTION_FAILED")); }
+          }).finally(() => { clearTimeout(timer); aiSignal.removeEventListener("abort", stopBudget); aiAbort.abort(); });
           return;
         }
 
@@ -362,6 +400,7 @@ export class PowerShellRuntime implements AssessmentRuntime {
           return;
         }
         settled = true;
+        aiAbort.abort();
         clearTimeout(timeout);
         signal.removeEventListener("abort", abort);
         contextBuffer.fill(0);
@@ -462,7 +501,8 @@ export class PowerShellRuntime implements AssessmentRuntime {
         spawned = true;
         try {
           onStarted();
-          child.stdin.end(contextBuffer, () => contextBuffer.fill(0));
+          if (assessment.id === "identity-assessment") child.stdin.write(contextBuffer, () => contextBuffer.fill(0));
+          else child.stdin.end(contextBuffer, () => contextBuffer.fill(0));
         } catch {
           fail(new PowerShellRuntimeError("ASSESSMENT_EXECUTION_FAILED"));
         }

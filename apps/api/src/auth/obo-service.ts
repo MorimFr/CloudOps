@@ -15,6 +15,8 @@ const GRAPH_SCOPES: Readonly<Record<GraphPermission, string>> = Object.freeze({
   "User.Read.All": "https://graph.microsoft.com/User.Read.All",
   "AuditLog.Read.All": "https://graph.microsoft.com/AuditLog.Read.All",
   "LicenseAssignment.Read.All": "https://graph.microsoft.com/LicenseAssignment.Read.All",
+  "GroupSettings.Read.All": "https://graph.microsoft.com/GroupSettings.Read.All",
+  "Policy.Read.All": "https://graph.microsoft.com/Policy.Read.All",
 });
 const MAX_GRAPH_TOKEN_BYTES = 64 * 1_024;
 const MAX_CLAIMS_CHALLENGE_BYTES = 8 * 1_024;

@@ -1,7 +1,10 @@
+import { loadFoundrySummaryConfig, type FoundrySummaryConfig } from "./services/executive-summary-provider.js";
+
 const KIBIBYTE = 1_024;
 const MEBIBYTE = KIBIBYTE * KIBIBYTE;
 
 export interface ApiConfig {
+  readonly aiSummary?: FoundrySummaryConfig;
   readonly nodeEnv: "development" | "test" | "production";
   readonly host: string;
   readonly port: number;
@@ -93,6 +96,7 @@ export function loadConfig(
   );
 
   return {
+    ...(loadFoundrySummaryConfig(environment) ? { aiSummary: loadFoundrySummaryConfig(environment)! } : {}),
     nodeEnv: parseNodeEnvironment(environment.NODE_ENV),
     host: environment.HOST?.trim() || "0.0.0.0",
     port: parseInteger(environment.PORT, 3_000, "PORT", 1, 65_535),

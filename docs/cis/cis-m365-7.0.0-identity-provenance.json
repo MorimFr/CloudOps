@@ -1,0 +1,18 @@
+{
+  "benchmarkName": "CIS Microsoft 365 Foundations Benchmark",
+  "benchmarkVersion": "7.0.0",
+  "benchmarkDate": "2026-05-20",
+  "sourceFile": "CIS_Microsoft_365_Foundations_Benchmark_v7.0.0.pdf",
+  "sourceSha256": "17bc3e4e19b274c481287c35f739a12f0312da2322a5395b9927c39080da105b",
+  "analysisTimestamp": "2026-09-16T12:31:10Z",
+  "mappingSchemaVersion": "cloudops.cis-identity-mapping.v1",
+  "sourcePdfPages": 628,
+  "pageNumbering": "Printed page; PDF viewer one-based page = printed page + 1.",
+  "authorities": {
+    "compliance": "Locally supplied CIS benchmark",
+    "implementation": "Official Microsoft documentation accessed 2026-09-16"
+  },
+  "runtimePackCreated": false,
+  "sourcePdfCopied": false,
+  "sourceLicenseReviewRequiredBeforePublication": true
+}

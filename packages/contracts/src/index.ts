@@ -6,3 +6,4 @@ export * from "./errors.js";
 export * from "./execution.js";
 export * from "./protocol.js";
 export * from "./identity-errors.js";
+export * from "./ai-executive-summary.js";

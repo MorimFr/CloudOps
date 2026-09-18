@@ -3,51 +3,465 @@
   "assessmentId": "identity-assessment",
   "assessmentVersion": "0.1.0",
   "sdkVersion": "cloudops.assessment-sdk.v1",
-  "capabilities": ["user-inventory"],
-  "aiFactAllowlist": ["members", "disabledMembers", "guests", "pendingGuests"],
+  "capabilities": [
+    "user-inventory",
+    "entra-directory"
+  ],
+  "aiFactAllowlist": [
+    "members",
+    "disabledMembers",
+    "guests",
+    "pendingGuests"
+  ],
   "collectors": [
-    { "id": "fixture-capability-summary", "version": "1.0.0", "requiredPermissions": [], "requiredCapabilities": ["user-inventory"], "requiresAuthentication": false },
-    { "id": "fixture-users-summary", "version": "1.0.0", "requiredPermissions": [], "requiredCapabilities": [], "requiresAuthentication": false },
-    { "id": "identity-users-summary", "version": "1.0.0", "requiredPermissions": ["User.Read.All"], "requiredCapabilities": [], "requiresAuthentication": true }
+    {
+      "id": "fixture-capability-summary",
+      "version": "1.0.0",
+      "requiredPermissions": [],
+      "requiredCapabilities": [
+        "user-inventory"
+      ],
+      "requiresAuthentication": false
+    },
+    {
+      "id": "fixture-users-summary",
+      "version": "1.0.0",
+      "requiredPermissions": [],
+      "requiredCapabilities": [],
+      "requiresAuthentication": false
+    },
+    {
+      "id": "identity-users-summary",
+      "version": "1.0.0",
+      "requiredPermissions": [
+        "User.Read.All"
+      ],
+      "requiredCapabilities": [],
+      "requiresAuthentication": true
+    },
+    {
+      "id": "authorization-policy",
+      "version": "1.0.0",
+      "requiredPermissions": [
+        "Policy.Read.All"
+      ],
+      "requiredCapabilities": [
+        "entra-directory"
+      ],
+      "requiresAuthentication": true
+    },
+    {
+      "id": "group-settings",
+      "version": "1.0.0",
+      "requiredPermissions": [
+        "GroupSettings.Read.All"
+      ],
+      "requiredCapabilities": [
+        "entra-directory"
+      ],
+      "requiresAuthentication": true
+    },
+    {
+      "id": "device-registration-policy",
+      "version": "1.0.0",
+      "requiredPermissions": [
+        "Policy.Read.All"
+      ],
+      "requiredCapabilities": [
+        "entra-directory"
+      ],
+      "requiresAuthentication": true
+    },
+    {
+      "id": "admin-consent-policy",
+      "version": "1.0.0",
+      "requiredPermissions": [
+        "Policy.Read.All"
+      ],
+      "requiredCapabilities": [
+        "entra-directory"
+      ],
+      "requiresAuthentication": true
+    }
   ],
   "evaluators": [
-    { "id": "dev-enabled-members", "version": "1.0.0", "collectorRequirements": ["fixture-capability-summary", "fixture-users-summary"] },
-    { "id": "dev-guest-invitations", "version": "1.0.0", "collectorRequirements": ["fixture-users-summary"] }
+    {
+      "id": "dev-enabled-members",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "fixture-capability-summary",
+        "fixture-users-summary"
+      ]
+    },
+    {
+      "id": "dev-guest-invitations",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "fixture-users-summary"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-2-2",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-2-3",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-3-1",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-3-4",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "group-settings"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-4-2",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "device-registration-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-4-5",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "device-registration-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-4-6",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-5-2",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "admin-consent-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-6-2",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    },
+    {
+      "id": "cis-m365-5-1-6-3",
+      "version": "1.0.0",
+      "collectorRequirements": [
+        "authorization-policy"
+      ]
+    }
   ],
   "recommendations": [
     {
       "recommendationId": "dev-member-review",
       "title": "DEV only: inspect synthetic member fixture",
       "summary": "This is a development exercise, not a recommendation to enable tenant accounts.",
-      "technicalSteps": ["Review the synthetic fixture and expected disabled member count.", "Change only the test fixture to exercise PASS and FAIL."],
+      "technicalSteps": [
+        "Review the synthetic fixture and expected disabled member count.",
+        "Change only the test fixture to exercise PASS and FAIL."
+      ],
       "portalPath": [],
       "impact": "No tenant change. Never enable a real account based on this development control.",
-      "rollback": ["Restore the synthetic fixture."],
-      "validation": ["Run the deterministic evaluator and verify the expected evidence counters."]
+      "rollback": [
+        "Restore the synthetic fixture."
+      ],
+      "validation": [
+        "Run the deterministic evaluator and verify the expected evidence counters."
+      ]
     },
     {
       "recommendationId": "dev-guest-review",
       "title": "DEV only: inspect synthetic invitation fixture",
       "summary": "This example demonstrates evidence and risk; it is not a guest removal policy.",
-      "technicalSteps": ["Review the synthetic pending invitation count.", "Change the test fixture or choose the alternate synthetic pack."],
+      "technicalSteps": [
+        "Review the synthetic pending invitation count.",
+        "Change the test fixture or choose the alternate synthetic pack."
+      ],
       "portalPath": [],
       "impact": "No tenant change. Do not remove or reinvite real users based on this example.",
-      "rollback": ["Restore the synthetic invitation fixture."],
-      "validation": ["Verify PASS, FAIL, NOT_APPLICABLE and UNKNOWN fixtures without network access."]
+      "rollback": [
+        "Restore the synthetic invitation fixture."
+      ],
+      "validation": [
+        "Verify PASS, FAIL, NOT_APPLICABLE and UNKNOWN fixtures without network access."
+      ]
     },
     {
       "recommendationId": "dev-manual-review",
       "title": "DEV only: demonstrate manual review workflow",
       "summary": "A human must assess the synthetic review exercise; the engine cannot assert compliance.",
-      "technicalSteps": ["Read the synthetic control definition.", "Record the manual conclusion outside this development test if required by the test protocol."],
+      "technicalSteps": [
+        "Read the synthetic control definition.",
+        "Record the manual conclusion outside this development test if required by the test protocol."
+      ],
       "portalPath": [],
       "impact": "No tenant change and no automated PASS or FAIL.",
-      "rollback": ["No configuration is modified."],
-      "validation": ["Verify the control remains MANUAL in HTML and both CSV files."]
+      "rollback": [
+        "No configuration is modified."
+      ],
+      "validation": [
+        "Verify the control remains MANUAL in HTML and both CSV files."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-2-2-remediation",
+      "title": "Adequação ao CIS 5.1.2.2",
+      "summary": "Definir Users can register applications como No.",
+      "technicalSteps": [
+        "Definir Users can register applications como No.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Users",
+        "User settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.2.2 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-2-3-remediation",
+      "title": "Adequação ao CIS 5.1.2.3",
+      "summary": "Definir Restrict non-admin users from creating tenants como Yes.",
+      "technicalSteps": [
+        "Definir Restrict non-admin users from creating tenants como Yes.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Users",
+        "User settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.2.3 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-3-1-remediation",
+      "title": "Adequação ao CIS 5.1.3.1",
+      "summary": "Definir Users can create security groups in Azure portals, API or PowerShell como No.",
+      "technicalSteps": [
+        "Definir Users can create security groups in Azure portals, API or PowerShell como No.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Groups",
+        "General"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.3.1 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-3-4-remediation",
+      "title": "Adequação ao CIS 5.1.3.4",
+      "summary": "Definir Users can create Microsoft 365 groups in Azure portals, API or PowerShell como No; usar a interface se o template estiver ausente.",
+      "technicalSteps": [
+        "Definir Users can create Microsoft 365 groups in Azure portals, API or PowerShell como No; usar a interface se o template estiver ausente.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Groups",
+        "General"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.3.4 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-4-2-remediation",
+      "title": "Adequação ao CIS 5.1.4.2",
+      "summary": "Definir Maximum number of devices per user entre 0 e 10, conforme a necessidade aprovada.",
+      "technicalSteps": [
+        "Definir Maximum number of devices per user entre 0 e 10, conforme a necessidade aprovada.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Devices",
+        "Device settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.4.2 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-4-5-remediation",
+      "title": "Adequação ao CIS 5.1.4.5",
+      "summary": "Definir Enable Microsoft Entra Local Administrator Password Solution (LAPS) como Yes.",
+      "technicalSteps": [
+        "Definir Enable Microsoft Entra Local Administrator Password Solution (LAPS) como Yes.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Devices",
+        "Device settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.4.5 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-4-6-remediation",
+      "title": "Adequação ao CIS 5.1.4.6",
+      "summary": "Definir Restrict users from recovering the BitLocker keys for their owned devices como Yes.",
+      "technicalSteps": [
+        "Definir Restrict users from recovering the BitLocker keys for their owned devices como Yes.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Devices",
+        "Device settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.4.6 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-5-2-remediation",
+      "title": "Adequação ao CIS 5.1.5.2",
+      "summary": "Habilitar Admin consent requests. Definir revisores e notificações no processo operacional; estes não são critérios adicionais de PASS.",
+      "technicalSteps": [
+        "Habilitar Admin consent requests. Definir revisores e notificações no processo operacional; estes não são critérios adicionais de PASS.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "Enterprise apps",
+        "Consent and permissions / Admin consent settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.5.2 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-6-2-remediation",
+      "title": "Adequação ao CIS 5.1.6.2",
+      "summary": "Definir Guest user access restrictions como acesso limitado ou restrito ao próprio objeto.",
+      "technicalSteps": [
+        "Definir Guest user access restrictions como acesso limitado ou restrito ao próprio objeto.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "External Identities",
+        "External collaboration settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.6.2 e conferir observed/expected."
+      ]
+    },
+    {
+      "recommendationId": "cis-m365-5-1-6-3-remediation",
+      "title": "Adequação ao CIS 5.1.6.3",
+      "summary": "Definir Guest invite restrictions para apenas papéis administrativos específicos ou nenhum usuário, inclusive administradores.",
+      "technicalSteps": [
+        "Definir Guest invite restrictions para apenas papéis administrativos específicos ou nenhum usuário, inclusive administradores.",
+        "Revisar impacto e aprovar a mudança antes de aplicar. Nenhuma remediação é executada pelo assessment."
+      ],
+      "portalPath": [
+        "Microsoft Entra admin center",
+        "Entra ID",
+        "External Identities",
+        "External collaboration settings"
+      ],
+      "impact": "Pode restringir fluxos de colaboração, provisionamento ou recuperação; validar os processos de suporte.",
+      "rollback": [
+        "Registrar a configuração anterior em processo aprovado e restaurá-la apenas mediante autorização."
+      ],
+      "validation": [
+        "Reexecutar a leitura do controle 5.1.6.3 e conferir observed/expected."
+      ]
     }
   ],
   "controlPacks": [
-    { "id": "cloudops-identity-alternate-dev", "version": "1.0.0", "file": "cloudops-identity-alternate-dev.json", "sha256": "88c7b72685e7ee83daf79c866381c9150dc04f6127baeec152c064f7635a1f80" },
-    { "id": "cloudops-identity-dev", "version": "1.0.0", "file": "cloudops-identity-dev.json", "sha256": "2143d2a2669d6ec87e69082608cda001fa794daa037fa470a79a71d9e79d7c70" }
+    {
+      "id": "cloudops-identity-alternate-dev",
+      "version": "1.0.0",
+      "file": "cloudops-identity-alternate-dev.json",
+      "sha256": "88c7b72685e7ee83daf79c866381c9150dc04f6127baeec152c064f7635a1f80"
+    },
+    {
+      "id": "cloudops-identity-dev",
+      "version": "1.0.0",
+      "file": "cloudops-identity-dev.json",
+      "sha256": "2143d2a2669d6ec87e69082608cda001fa794daa037fa470a79a71d9e79d7c70"
+    },
+    {
+      "id": "cis-m365-identity-wave1",
+      "version": "1.0.0",
+      "file": "cis-m365-7-0-0/identity-wave1.json",
+      "sha256": "be8f6fb711b2ea79d86e0b47210c3d91c300de4693637e58352bcf51043b1dbb"
+    }
   ]
 }

@@ -6,6 +6,7 @@ import {
   useParams,
 } from "react-router-dom";
 import type {
+  AssessmentExecutionRequest,
   AssessmentSummary,
   Execution,
   ExecutionStatus,
@@ -316,7 +317,7 @@ function ProviderWorkspace({
   const hasActiveExecution =
     execution !== null && !TERMINAL_STATUSES.has(execution.status);
 
-  const runAssessment = async (assessmentId: string) => {
+  const runAssessment = async (assessmentId: string, options: AssessmentExecutionRequest["options"] = {}) => {
     if (!auth.authenticated) {
       setExecutionError(
         "Conecte sua conta Microsoft antes de iniciar a avaliação.",
@@ -329,7 +330,7 @@ function ProviderWorkspace({
     if (!assessment) return;
     setExecutionError(null);
     setDownloadComplete(false);
-    await launch.launch(assessment);
+    await launch.launch(assessment, options);
   };
 
   const downloadArtifact = async () => {
@@ -476,7 +477,7 @@ function ProviderWorkspace({
                 <div className="catalog-modules">
                   {modules.map((module) => <CatalogModuleSection key={module.id} module={module}
                     busy={launch.creatingId !== null || launch.consenting || hasActiveExecution || auth.busy}
-                    consent={launch.consent} onExecute={(id) => void runAssessment(id)} />)}
+                    consent={launch.consent} onExecute={(id, options) => void runAssessment(id, options)} />)}
                 </div>
               )
             )}

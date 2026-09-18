@@ -21,13 +21,14 @@
     "pretest": "npm run build --workspace @cloudops/contracts",
     "test": "vitest run",
     "pretest:e2e:local": "npm run build --workspace @cloudops/contracts",
-    "test:e2e:local": "tsx test/hello-world.e2e.ts",
+    "test:e2e:local": "tsx test/hello-world.e2e.ts && tsx test/identity-wave1.e2e.ts",
     "pretypecheck": "npm run build --workspace @cloudops/contracts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
     "prelint": "npm run build --workspace @cloudops/contracts",
     "lint": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@azure/identity": "4.13.3",
     "@azure/msal-node": "^6.0.0",
     "@cloudops/contracts": "*",
     "@fastify/cors": "^11.1.0",

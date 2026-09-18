@@ -1,4 +1,5 @@
 import type { CatalogModule } from "../catalog/modules";
+import type { AssessmentExecutionRequest } from "@cloudops/contracts";
 import type { PendingConsent } from "../auth/useAssessmentLaunch";
 import { AssessmentCard } from "./AssessmentCard";
 
@@ -6,7 +7,7 @@ interface CatalogModuleSectionProps {
   readonly module: CatalogModule;
   readonly busy: boolean;
   readonly consent: PendingConsent | null;
-  readonly onExecute: (id: string) => void;
+  readonly onExecute: (id: string, options?: AssessmentExecutionRequest["options"]) => void;
 }
 
 export function CatalogModuleSection({ module, busy, consent, onExecute }: CatalogModuleSectionProps) {

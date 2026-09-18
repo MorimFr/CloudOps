@@ -109,7 +109,7 @@ describe("shared contracts", () => {
     ]);
     expect(ASSESSMENT_VISIBILITIES).toEqual(["public", "development"]);
     expect(ASSESSMENT_AUTH_PROVIDERS).toEqual(["none", "microsoft-graph"]);
-    expect(GRAPH_PERMISSIONS).toEqual(["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All"]);
+    expect(GRAPH_PERMISSIONS).toEqual(["User.Read", "User.Read.All", "AuditLog.Read.All", "LicenseAssignment.Read.All", "GroupSettings.Read.All", "Policy.Read.All"]);
 
     expect(
       AssessmentSummarySchema.parse({

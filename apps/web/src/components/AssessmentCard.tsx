@@ -1,4 +1,5 @@
-import type { AssessmentSummary } from "@cloudops/contracts";
+import { useState } from "react";
+import { CisProfileSchema, type AssessmentSummary, type AssessmentExecutionRequest } from "@cloudops/contracts";
 import type { PermissionState } from "../auth/consent";
 import { AssessmentIcon } from "./AssessmentIcon";
 
@@ -6,7 +7,7 @@ interface AssessmentCardProps {
   readonly assessment: AssessmentSummary;
   readonly busy?: boolean;
   readonly permissionState?: PermissionState;
-  readonly onExecute: (assessmentId: string) => void;
+  readonly onExecute: (assessmentId: string, options?: AssessmentExecutionRequest["options"]) => void;
 }
 
 function assessmentKind(assessment: AssessmentSummary): string {
@@ -25,6 +26,9 @@ export function AssessmentCard({
   permissionState = "READY",
   onExecute,
 }: AssessmentCardProps) {
+  const [cisProfile, setCisProfile] = useState("");
+  const needsCisProfile = assessment.id === "identity-assessment";
+  const selectedProfile = CisProfileSchema.safeParse(cisProfile);
   const unavailable = !assessment.enabled;
   const status = unavailable ? "Indisponível" : permissionState === "ADMIN_APPROVAL_REQUIRED" ? "Admin approval" : permissionState === "CONSENT_REQUIRED" ? "Permissões necessárias" : permissionState === "INTERACTION_REQUIRED" ? "Interação necessária" : "Disponível";
 
@@ -64,6 +68,20 @@ export function AssessmentCard({
           </div>
         )}
         {assessment.adminConsentRequired && <span className="admin-approval-badge">Admin approval</span>}
+        {needsCisProfile && (
+          <div className="assessment-options">
+            <label htmlFor={`profile-${assessment.id}`}>Perfil CIS</label>
+            <select id={`profile-${assessment.id}`} value={cisProfile} required disabled={busy || unavailable}
+              aria-describedby={`profile-note-${assessment.id}`} onChange={(event) => setCisProfile(event.target.value)}>
+              <option value="">Selecione o perfil</option>
+              <option value="E3_L1">E3 · Level 1 — 7 controles</option>
+              <option value="E3_L2">E3 · Level 2 — 10 controles</option>
+              <option value="E5_L1">E5 · Level 1 — 7 controles</option>
+              <option value="E5_L2">E5 · Level 2 — 10 controles</option>
+            </select>
+            <p id={`profile-note-${assessment.id}`}>Wave 1 · cobertura parcial. Escolha o perfil aplicável ao ambiente; as licenças não são detectadas automaticamente.</p>
+          </div>
+        )}
       </div>
 
       <div className="card-footer">
@@ -72,9 +90,13 @@ export function AssessmentCard({
           id={`execute-${assessment.id}`}
           className="button button-secondary"
           type="button"
-          disabled={unavailable || busy}
+          disabled={unavailable || busy || (needsCisProfile && !selectedProfile.success)}
           aria-label={`Executar ${assessment.name}`}
-          onClick={() => onExecute(assessment.id)}
+          onClick={() => {
+            if (needsCisProfile) {
+              if (selectedProfile.success) onExecute(assessment.id, { cisProfile: selectedProfile.data });
+            } else onExecute(assessment.id);
+          }}
         >
           Executar
           {!busy && <span aria-hidden="true">→</span>}

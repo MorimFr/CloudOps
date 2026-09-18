@@ -24,6 +24,8 @@
     "assessments:list": "npm run assessments:list --workspace @cloudops/api",
     "control-packs:validate": "npm run control-packs:validate --workspace @cloudops/api",
     "control-packs:list": "npm run control-packs:list --workspace @cloudops/api",
+    "cis:validate": "npm run build --workspace @cloudops/contracts && node scripts/cis/validate-inventory.mjs",
+    "test:cis": "npm run build --workspace @cloudops/contracts && node --test scripts/cis/validate-inventory.test.mjs",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

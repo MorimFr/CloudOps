@@ -24,6 +24,12 @@ function Get-IdentityDevelopmentControlPack {
         [string] $ControlPackId = 'cloudops-identity-dev'
     )
     $definition = Get-IdentityAssessmentDefinition
+    # DEV harness remains isolated from production registry and capabilities.
+    $definition.collectors = @($definition.collectors | Where-Object { $_.id -notin @('authorization-policy','group-settings','device-registration-policy','admin-consent-policy') })
+    $definition.evaluators = @($definition.evaluators | Where-Object { $_.id.StartsWith('dev-') })
+    $definition.recommendations = @($definition.recommendations | Where-Object { $_.recommendationId.StartsWith('dev-') })
+    $definition.capabilities = @('user-inventory')
+    $definition.controlPacks = @($definition.controlPacks | Where-Object { $_.id.EndsWith('-dev') })
     $reference = @($definition.controlPacks | Where-Object { $_.id -ceq $ControlPackId })
     if ($reference.Count -ne 1) { throw [System.InvalidOperationException]::new('Identity development pack is not registered.') }
     # The path is selected from code-owned constants; profile metadata never
